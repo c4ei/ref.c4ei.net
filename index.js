@@ -80,22 +80,36 @@ app.get('/login', (req, res) => {
     res.render('login');
 });
 
-app.post('/login', (req, res) => {
-    const { userId, password } = req.body;
-    if (!userId || !password) {
-        return res.status(400).send('사용자 ID와 비밀번호를 모두 입력해주세요.');
+app.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+        return res.status(400).send('EMAIL과 비밀번호를 모두 입력해주세요.');
     }
-
-    db.query('SELECT * FROM users WHERE userId = ?', [userId], async (err, results) => {
-        if (err) throw err;
-
-        if (results.length === 0 || !(await bcrypt.compare(password, results[0].password))) {
-            return res.status(401).send('사용자 ID 또는 비밀번호가 올바르지 않습니다.');
+    let sql = "SELECT * FROM users WHERE email = '"+email+"'";
+    let result = await loadDB(sql);
+    console.log(result[0].length +" : result[0].length");
+    if(result[0].length>0){
+        console.log(password +" : password");
+        console.log(result[0].password +" : result.password");
+        if(!(await bcrypt.compare(password, result[0].password))){
+            return res.status(401).send('EMAIL 또는 비밀번호가 올바르지 않습니다.');
         }
+    }else{
+        return res.status(401).send('회원가입을 먼저 하세요.');
+    }
+    
+    req.session.email = email;
+    res.redirect('/invite');
+    // db.query('SELECT * FROM users WHERE email = ?', [email], async (err, results) => {
+    //     if (err) throw err;
 
-        req.session.userId = userId;
-        res.redirect('/invite');
-    });
+    //     if (results.length === 0 || !(await bcrypt.compare(password, results[0].password))) {
+    //         return res.status(401).send('EMAIL 또는 비밀번호가 올바르지 않습니다.');
+    //     }
+
+    //     req.session.email = email;
+    //     res.redirect('/invite');
+    // });
 });
 
 app.get('/signup', (req, res) => {
@@ -103,60 +117,71 @@ app.get('/signup', (req, res) => {
 });
 
 app.post('/signup', async (req, res) => {
-    const { userId, password } = req.body;
-    if (!userId || !password) {
-        return res.status(400).send('사용자 ID와 비밀번호를 모두 입력해주세요.');
+    const { email, password } = req.body;
+    if (!email || !password) {
+        return res.status(400).send('EMAIL과 비밀번호를 모두 입력해주세요.');
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = { userId, password: hashedPassword };
-
-    // aah_addr VARCHAR(63)
-	// aah_prv_addr VARCHAR(100)
-	// aah_balance VARCHAR(40)
-
-    db.query('INSERT INTO users SET ?', newUser, (err, result) => {
-        if (err) throw err;
+    const newUser = { email, password: hashedPassword };
+    var user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
+    let sql = "INSERT INTO users (email , password ,regip) values ('"+email+"','"+hashedPassword+"','"+user_ip+"') ";
+    try{
+        await saveDB(sql);
         console.log('새로운 사용자가 추가되었습니다.');
+        await fn_makeAddress(email);
 
         // 사용자 정보를 세션에 추가하여 로그인 상태로 설정
-        req.session.userId = userId;
+        req.session.email = email;
 
         res.redirect('/invite');
-    });
+    }catch(e){
+        console.log(sql);
+    }
+    
+    // db.query('INSERT INTO users SET ?', newUser, (err, result) => {
+    //     if (err) throw err;
+    //     console.log('새로운 사용자가 추가되었습니다.');
+    //     fn_makeAddress(email)
+
+    //     // 사용자 정보를 세션에 추가하여 로그인 상태로 설정
+    //     req.session.email = email;
+
+    //     res.redirect('/invite');
+    // });
 });
 
 app.get('/invite', (req, res) => {
-    if (!req.session.userId) {
+    if (!req.session.email) {
         return res.status(401).send('로그인이 필요합니다.');
     }
 
-    const userId = req.session.userId;
+    const email = req.session.email;
     const inviteCode = shortid.generate();
-    const inviteLink = `${process.env.FRONTEND_URL}/join?code=${inviteCode}&userId=${userId}`;
+    const inviteLink = `${process.env.FRONTEND_URL}/join?code=${inviteCode}&email=${email}`;
     res.send(inviteLink);
 });
 
-// https://tel3.c4ei.net/join?code=5FiuDQx5b&userId=c4ei
+// https://tel3.c4ei.net/join?code=5FiuDQx5b&email=c4ei
 app.get('/join', (req, res) => {
-    const { code, userId } = req.query;
+    const { code, email } = req.query;
     if (!code) {
         return res.status(400).send('초대 코드가 필요합니다.');
     }
-    res.render('join', { code , fid:userId });
+    res.render('join', { code , fid:email });
 });
 
 app.get('/joinok', (req, res) => {
-    const { code, userId, password } = req.query;
-    if (!code || !userId || !password) {
-        return res.status(400).send('코드, 사용자 ID, 비밀번호가 필요합니다.');
+    const { code, email, password } = req.query;
+    if (!code || !email || !password) {
+        return res.status(400).send('코드, EMAIL, 비밀번호가 필요합니다.');
     }
 
     // 초대 코드를 확인하고, 맞는 경우 사용자를 등록하고 파티에 추가합니다.
-    const inviteLink = inviteLinks[userId];
+    const inviteLink = inviteLinks[email];
     if (inviteLink && inviteLink.includes(code)) {
         // 초대 링크가 올바른 경우 사용자를 등록하고 파티에 추가하는 로직을 구현합니다.
-        const newUser = { userId, password };
+        const newUser = { email, password };
         db.query('INSERT INTO users SET ?', newUser, (err, result) => {
             if (err) {
                 return res.status(500).send('사용자 등록 중 오류가 발생했습니다.');
@@ -172,12 +197,12 @@ app.get('/joinok', (req, res) => {
 
 app.post('/createParty', (req, res) => {
     const { partyName } = req.body;
-    if (!req.session.userId || !partyName) {
+    if (!req.session.email || !partyName) {
         return res.status(400).send('파티 이름과 로그인이 필요합니다.');
     }
 
-    const userId = req.session.userId;
-    const newParty = { partyName, userId };
+    const email = req.session.email;
+    const newParty = { partyName, email };
     db.query('INSERT INTO parties SET ?', newParty, (err, result) => {
         if (err) throw err;
         console.log('새로운 파티가 생성되었습니다.');
@@ -206,5 +231,3 @@ function getCurTimestamp() {
 app.listen(process.env.PORT, () => {
     console.log(`서버가 http://localhost:${process.env.PORT} 포트에서 실행 중입니다.`);
 });
-
-/////////////////// air drop //////////////////////
