@@ -1,0 +1,16 @@
+
+BASE_URL = https://tel3.c4ei.net
+PORT=4003
+--> 
+BASE_URL = https://ref.c4ei.net
+PORT=3333
+
+
+NODE_ENV="production"
+
+cd /home/dev/www/ref/ref.c4ei.net
+yarn start
+
+
+yarn add express mysql2 bcrypt  express-session shortid
+
