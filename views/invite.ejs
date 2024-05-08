@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>초대 링크 페이지</title>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #f0f0f0;
+}
+
+.container {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+h1 {
+    color: #333;
+}
+
+.invite-link {
+    margin-top: 20px;
+}
+
+input[type="text"] {
+    width: 320px;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-right: 10px;
+}
+
+button {
+    padding: 8px 16px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+</style>
+</head>
+<body>
+    <div class="container">
+        <a href="/">HOME</a> <a href="/mining">MINING</a> <br>
+
+        <h1>초대 링크 페이지</h1>
+        <p>이 페이지는 초대 링크를 받은 사용자를 위한 페이지입니다.</p>
+        <div class="invite-link">
+            <p>초대 코드:</p>
+            <input type="text" id="inviteLink" value="<%=inviteLink%>" readonly>
+            <button onclick="copyToClipboard()">복사</button>
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard() {
+            const inviteCodeInput = document.querySelector('.invite-link input');
+            inviteCodeInput.select();
+            document.execCommand('copy');
+            alert('초대 코드가 복사되었습니다!');
+        }
+    </script>
+</body>
+</html>

@@ -74,3 +74,17 @@ COLLATE='utf8_unicode_ci'
 ENGINE=InnoDB
 AUTO_INCREMENT=26
 ;
+CREATE TABLE `mininglog` (
+	`midx` BIGINT(20) NOT NULL AUTO_INCREMENT,
+	`userIdx` INT(11) NOT NULL,
+    `aah_balance` VARCHAR(40) NULL DEFAULT '0' COLLATE 'utf8_unicode_ci',
+	`regdate` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`regip` VARCHAR(15) NULL DEFAULT '' COLLATE 'utf8_unicode_ci',
+	`memo` VARCHAR(250) NULL COLLATE 'utf8_unicode_ci',
+	PRIMARY KEY (`midx`) USING BTREE,
+	INDEX `userIdx` (`userIdx`) USING BTREE
+)
+COLLATE='utf8_unicode_ci'
+ENGINE=InnoDB
+AUTO_INCREMENT=1
+;

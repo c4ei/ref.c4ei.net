@@ -149,12 +149,14 @@ app.get('/invite', async (req, res) => {
         return res.status(401).send('로그인이 필요합니다.');
     }
 
-    const email = req.session.email;
-    const fid = req.session.userIdx;
+    const _email = req.session.email;
+    const _userIdx = req.session.userIdx;
     const inviteCode = shortid.generate();
     // let ref_id = await fn_getIdFromEmail(fid);
-    const inviteLink = `${process.env.FRONTEND_URL}/join?code=${inviteCode}&fid=${fid}`;
-    res.send(inviteLink);
+    const inviteLink = `${process.env.FRONTEND_URL}/join?code=${inviteCode}&fid=${_userIdx}`;
+    // res.send(inviteLink);
+
+    res.render('invite', { inviteLink:inviteLink, email:_email, userIdx:_userIdx });
 });
 
 // https://tel3.c4ei.net/join?code=5FiuDQx5b&fid=1
@@ -227,13 +229,19 @@ app.post('/createParty', (req, res) => {
 // 적립 요청 처리
 // 데이터베이스 시뮬레이션용 변수
 // let accumulatedPoints = 0;
-app.post('/accumulate', (req, res) => {
+app.post('/accumulate', async (req, res) => {
     const { MiningQty , userIdx , email } = req.body;
-    
-    // 여기서는 단순히 적립된 포인트를 누적하고 로그로 출력합니다.
-    // accumulatedPoints += count;
-    console.log('적립된 포인트: %s / %s / %s', MiningQty , userIdx , email);
-    
+    var user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
+    let sql1 = "UPDATE users set aah_balance = aah_balance + '"+MiningQty+"' WHERE userIdx = '"+userIdx+"'";
+    try{
+        await saveDB(sql1);
+        console.log('적립된 포인트: %s / %s / %s', MiningQty , userIdx , email);
+        let _memo2 = email +" WEB MINING ";
+        await fn_setMiningLog(userIdx,MiningQty,_memo2,user_ip);
+    } catch(e) {
+        console.log(sql);
+    }
+
     res.sendStatus(200);
 });
 
@@ -260,6 +268,15 @@ app.listen(process.env.PORT, () => {
     console.log(`서버가 http://localhost:${process.env.PORT} 포트에서 실행 중입니다.`);
 });
 // #########################################  
+
+async function fn_setMiningLog(userIdx, aah_balance, memo, user_ip){
+    let sql = "INSERT INTO mininglog (userIdx, aah_balance, regip, memo) VALUES ('"+userIdx+"','"+aah_balance+"','"+user_ip+"','"+memo+"')";
+    try{
+        await saveDB(sql);
+    }catch(e){
+        console.log("fn_setMiningLog\n"+sql);
+    }
+}
 
 async function fn_getIdFromEmail(email){
     let _userIdx = 0;
