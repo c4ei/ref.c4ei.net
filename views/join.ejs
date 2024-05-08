@@ -25,7 +25,7 @@
     <div class="card">
         <div class="card-body">
             <h5 class="card-title text-center">가입</h5>
-            <form action="/joinok" method="POST">
+            <form name="form_join" id="form_join" method="POST">
                 <div class="form-group">
                     <label for="email">EMAIL:</label>
                     <input type="text" class="form-control" id="email" name="email" required>
@@ -43,8 +43,28 @@
                 
                 <input type="hidden" name="code" value="<%= code %>">
                 <br />
-                <button type="submit" class="btn btn-primary btn-block">가입하기</button>
+                <button type="button" onclick="jsfn_submit();" class="btn btn-primary btn-block">가입하기</button>
             </form>
+            <% if(_resend=="Y"){ %> <script>alert('이미 가입된 email 입니다.\n현재 창을 닫고 다시 시도해 주시기 부탁드립니다.');</script> <% } %>
+            <script>
+                function jsfn_submit(){
+                    let _form_join = document.getElementById("form_join");
+                    let _email = document.getElementById("email");
+                    let _password = document.getElementById("password");
+                    if(_email.value.length<10){
+                        alert('email 을 입력하세요.');
+                        _email.focus();
+                        return;
+                    }
+                    if(_password.value.length<8){
+                        alert('비밀번호를 8자이상 입력하세요.');
+                        _password.focus();
+                        return;
+                    }
+                    _form_join.action="/joinok";
+                    _form_join.submit();
+                }
+            </script>
         </div>
     </div>
 </body>

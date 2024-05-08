@@ -25,7 +25,7 @@
     <div class="card">
         <div class="card-body">
             <h5 class="card-title text-center">회원가입</h5>
-            <form action="/signup" method="POST">
+            <form name="form_signup" id="form_signup" method="POST">
                 <div class="form-group">
                     <label for="email">EMAIL:</label>
                     <input type="text" class="form-control" id="email" name="email" required>
@@ -34,8 +34,27 @@
                     <label for="password">비밀번호:</label>
                     <input type="password" class="form-control" id="password" name="password" required>
                 </div>
-                <button type="submit" class="btn btn-primary btn-block">회원가입</button>
+                <button type="button" onclick="jsfn_submit();" class="btn btn-primary btn-block">회원가입</button>
             </form>
+            <script>
+                function jsfn_submit(){
+                    let _form_signup = document.getElementById("form_signup");
+                    let _email = document.getElementById("email");
+                    let _password = document.getElementById("password");
+                    if(_email.value.length<10){
+                        alert('email 을 입력하세요.');
+                        _email.focus();
+                        return;
+                    }
+                    if(_password.value.length<8){
+                        alert('비밀번호를 8자이상 입력하세요.');
+                        _password.focus();
+                        return;
+                    }
+                    _form_signup.action="/signup";
+                    _form_signup.submit();
+                }
+            </script>
         </div>
     </div>
 </body>
