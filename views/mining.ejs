@@ -9,15 +9,66 @@
             font-size: 48px;
             transition: color 0.2s ease-in-out;
         }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .user-info {
+            margin-top: 20px;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
     </style>
 </head>
 <body>
-    <h1 id="MiningQty">0.0000000000001</h1>
-    <button id="startButton">시작</button>
-    <button id="accumulateButton">적립</button>
-    <button id="makeLinkButton">초대링크생성</button>
-    <input type="hidden" id="email" value="<%=email%>" />
-    <input type="hidden" id="userIdx" value="<%=userIdx%>" />
+    <div class="container">
+        <h1>AAH MINING</h1>
+        <p>이 페이지는 AAH WEB MINING 을 표시하는 페이지입니다.</p>
+        <div class="user-info">
+            <p>Email 주소 : <%=email%></p>
+            <p>적립된 AAH : <span id="accumulatedCount"><%=aah_balance%></span></p>
+            <p>내 추천인 수 : <%=reffer_cnt%></p>
+        </div>
+        <h1 id="MiningQty">0.0000000000001</h1>
+        <button id="startButton">시작</button>
+        <button id="accumulateButton">적립</button>
+        <button id="makeLinkButton">초대링크생성</button>
+        <input type="hidden" id="email" value="<%=email%>" />
+        <input type="hidden" id="userIdx" value="<%=userIdx%>" />
+    </div>
     <script>
         const MiningQtyDisplay = document.getElementById('MiningQty');
         const startButton = document.getElementById('startButton');

@@ -75,14 +75,24 @@ const iv = process.env.AES_IV; // Initialization Vector (16 바이트)
 app.set('view engine', 'ejs');
 app.set('views', __dirname + '/views');
 
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
     if (!req.session.email) {
         res.redirect('/login');
     } else {
         // res.sendFile(STATIC_PATH + '/index.html')
         let _email = req.session.email;
         let _userIdx = req.session.userIdx;
-        res.render('mining', { email:_email , userIdx:_userIdx });
+
+        let sql = "SELECT userIdx, aah_balance, reffer_id, reffer_cnt FROM users WHERE userIdx='"+_userIdx+"'";
+        let result = await loadDB(sql);
+        // console.log(result.length +" : result.length" + JSON.stringify(result[0]) );
+        if(result.length>0){
+            _aah_balance = result[0].aah_balance;
+            _reffer_id = result[0].reffer_id;
+            _reffer_cnt = result[0].reffer_cnt;
+        }
+        
+        res.render('mining', { email:_email , userIdx:_userIdx ,aah_balance:_aah_balance, reffer_id:_reffer_id , reffer_cnt:_reffer_cnt});
     }
 });
 
@@ -232,7 +242,7 @@ app.post('/createParty', (req, res) => {
 app.post('/accumulate', async (req, res) => {
     const { MiningQty , userIdx , email } = req.body;
     var user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
-    let sql1 = "UPDATE users set aah_balance = aah_balance + '"+MiningQty+"' WHERE userIdx = '"+userIdx+"'";
+    let sql1 = "UPDATE users set aah_balance = CAST(aah_balance AS DECIMAL(35,13)) + CAST('"+MiningQty+"' AS DECIMAL(35,13)), last_reg=now(), last_ip='"+user_ip+"' WHERE userIdx = '"+userIdx+"'";
     try{
         await saveDB(sql1);
         console.log('적립된 포인트: %s / %s / %s', MiningQty , userIdx , email);
@@ -276,6 +286,20 @@ async function fn_setMiningLog(userIdx, aah_balance, memo, user_ip){
     }catch(e){
         console.log("fn_setMiningLog\n"+sql);
     }
+}
+
+async function fn_getAAHBalance(userIdx){
+    let sql = "SELECT userIdx, aah_balance, reffer_id, reffer_cnt FROM users WHERE userIdx='"+userIdx+"'";
+    let result = await loadDB(sql);
+    // console.log(result.length +" : result.length" + JSON.stringify(result[0]) );
+    if(result.length>0){
+        _userIdx = result[0].userIdx;
+        _aah_balance = result[0].aah_balance;
+        _reffer_id = result[0].reffer_id;
+        _reffer_cnt = result[0].reffer_cnt;
+    }
+    // console.log("216 fn_getIdFromEmail -> _userIdx : " + _userIdx);
+    return {_userIdx, _aah_balance, _reffer_id, reffer_cnt};
 }
 
 async function fn_getIdFromEmail(email){
