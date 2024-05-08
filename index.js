@@ -20,6 +20,9 @@ app.use(session({
     resave: false,
     saveUninitialized: true
 }));
+var path = require('path');
+const STATIC_PATH = path.join(__dirname, './public')
+// app.use(bodyParser.json());
 
 // MySQL 데이터베이스 연결 설정
 const mysql = require("mysql2/promise");
@@ -73,7 +76,14 @@ app.set('view engine', 'ejs');
 app.set('views', __dirname + '/views');
 
 app.get('/', (req, res) => {
-    res.redirect('/login');
+    if (!req.session.email) {
+        res.redirect('/login');
+    } else {
+        // res.sendFile(STATIC_PATH + '/index.html')
+        let _email = req.session.email;
+        let _userIdx = req.session.userIdx;
+        res.render('mining', { email:_email , userIdx:_userIdx });
+    }
 });
 
 app.get('/login', (req, res) => {
@@ -89,8 +99,6 @@ app.post('/login', async (req, res) => {
     let result = await loadDB(sql);
     // console.log(result[0].length +" : result[0].length");
     if(result.length>0){
-        // console.log(password +" : password");
-        // console.log(result[0].password +" : result.password");
         if(!(await bcrypt.compare(password, result[0].password))){
             return res.status(401).send('EMAIL 또는 비밀번호가 올바르지 않습니다.');
         }
@@ -101,7 +109,8 @@ app.post('/login', async (req, res) => {
     
     req.session.email = email;
     req.session.userIdx = result[0].userIdx;
-    res.redirect('/invite');
+    // res.redirect('/invite');
+    res.redirect('/');
 });
 
 app.get('/signup', (req, res) => {
@@ -199,7 +208,6 @@ app.post('/joinok', async (req, res) => {
     res.redirect('/invite');
 });
 
-
 app.post('/createParty', (req, res) => {
     const { partyName } = req.body;
     if (!req.session.email || !partyName) {
@@ -214,6 +222,21 @@ app.post('/createParty', (req, res) => {
         res.send('새로운 파티가 생성되었습니다.');
     });
 });
+
+
+// 적립 요청 처리
+// 데이터베이스 시뮬레이션용 변수
+// let accumulatedPoints = 0;
+app.post('/accumulate', (req, res) => {
+    const { MiningQty , userIdx , email } = req.body;
+    
+    // 여기서는 단순히 적립된 포인트를 누적하고 로그로 출력합니다.
+    // accumulatedPoints += count;
+    console.log('적립된 포인트: %s / %s / %s', MiningQty , userIdx , email);
+    
+    res.sendStatus(200);
+});
+
 
 function getCurTimestamp() {
     const d = new Date();

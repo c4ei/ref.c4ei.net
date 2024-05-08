@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>클릭 카운트</title>
+    <style>
+        #MiningQty {
+            font-size: 48px;
+            transition: color 0.2s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <h1 id="MiningQty">0.0000000000001</h1>
+    <button id="startButton">시작</button>
+    <button id="accumulateButton">적립</button>
+
+    <script>
+        const MiningQtyDisplay = document.getElementById('MiningQty');
+        const startButton = document.getElementById('startButton');
+        const accumulateButton = document.getElementById('accumulateButton');
+        let MiningQty = 0;
+        let intervalId;
+
+        const updateCount = () => {
+            const randomInterval = 1000; // 1초마다
+            setTimeout(() => {
+                MiningQty += 0.0000000001; // 0.0000000001 씩 증가
+                const integerPart = Math.floor(MiningQty); // 정수 부분
+                let decimalPart = (MiningQty - integerPart).toFixed(10).slice(2); // 소수 부분
+                let randomDigits = Math.floor(Math.random() * 1000).toString().padStart(3, '0'); // 랜덤한 3자리 생성
+                const displayCount = integerPart + "." + decimalPart + randomDigits; // 정수부분과 소수부분 그리고 랜덤한 숫자 합치기
+                MiningQtyDisplay.textContent = displayCount;
+                MiningQtyDisplay.style.color = 'red';
+                setTimeout(() => {
+                    MiningQtyDisplay.style.color = 'black';
+                }, 200);
+            }, randomInterval);
+        };
+
+        startButton.addEventListener('click', () => {
+            if (!intervalId) {
+                updateCount();
+                intervalId = setInterval(updateCount, 1000);
+            }
+        });
+
+        accumulateButton.addEventListener('click', () => {
+            // alert(MiningQtyDisplay.textContent+" : MiningQtyDisplay");
+            clearInterval(intervalId);
+            MiningQty = 0;
+            MiningQtyDisplay.textContent = "0.0000000000001";
+            MiningQtyDisplay.style.color = 'black';
+            intervalId = null;
+
+            // 적립 버튼을 누를 때 서버로 데이터를 전송
+            fetch('/accumulate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ MiningQty: MiningQtyDisplay.textContent })
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log('적립이 완료되었습니다.');
+                } else {
+                    console.error('적립에 실패했습니다.');
+                }
+            })
+            .catch(error => {
+                console.error('네트워크 오류:', error);
+            });
+        });
+    </script>
+</body>
+</html>
