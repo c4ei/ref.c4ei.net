@@ -253,12 +253,38 @@ app.post('/joinok', async (req, res) => {
     res.redirect('/invite');
 });
 
+app.get('/makeparty', async (req, res) => {
+    if (!req.session.email) {
+        return res.status(401).send('로그인이 필요합니다.');
+    }
+
+    const _email = req.session.email;
+    const _userIdx = req.session.userIdx;
+
+    let sql1 = "SELECT count(userIdx) cnt FROM parties WHERE userIdx='"+_userIdx+"'" ;
+    let result1 = await loadDB(sql1);
+    let _cnt = result1[0].cnt;
+
+    let result2 = "nodata";
+    let partyName = "";
+    if(_cnt>0){
+        let sql2 = "SELECT * FROM parties WHERE userIdx='"+_userIdx+"')";
+        result2 = await loadDB(sql2);
+        if(result2.length>0){
+            partyName= result2[0].partyName;
+            // userIdx = result2[0].userIdx;
+        }
+    }
+
+    res.render('makeparty', { email:_email, userIdx:_userIdx ,partyName:partyName, result2:result2 });
+});
+
 app.post('/createParty', (req, res) => {
     const { partyName } = req.body;
     if (!req.session.email || !partyName) {
         return res.status(400).send('파티 이름과 로그인이 필요합니다.');
     }
-
+    partyName = jsfnRepSQLinj(partyName);
     const email = req.session.email;
     const newParty = { partyName, email };
     db.query('INSERT INTO parties SET ?', newParty, (err, result) => {
@@ -639,4 +665,9 @@ function jsfn_decrypt(encrypted) {
   return decrypted;
 }
 
+function jsfnRepSQLinj(str){
+    str = str.replace('\'','`');
+    str = str.replace('--','');
+    return str;
+  }
 // fn_makeAddress();

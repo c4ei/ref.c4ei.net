@@ -59,19 +59,29 @@
         <!-- <p>이 페이지는 AAH WEB MINING 을 표시하는 페이지입니다.</p> -->
         <div class="user-info">
             <p>적립예정 AAH 수량 : <span id="accumulatedCount"><%=aah_balance%></span></p>
-            <p>내 추천인 수 : <%=reffer_cnt%></p>
+            <p>내 추천인 수 : <%=reffer_cnt%> <font color="red">Hash+</font></p>
         </div>
         <button id="showMoreButton" onclick="jsfn_lyShow()">추가정보</button>
         <div id="lyNoShow" style="display: none;">
-            <p>Email 주소 : <%=email%></p>
-            <p>AAH 주소 : <br /> <span id="aah_address"><%=aah_address%></span></p>
-            <p>주소상 AAH 수량 : <span id="aah_real_balance"><%=aah_real_balance%></span></p>
+            <p>내 Email 주소 : <%=email%></p>
+            <p>내 AAH 주소 : <br /> <span id="aah_address"><%=aah_address%></span></p>
+            <p>내 지갑 AAH 예치수량 : <span id="aah_real_balance"><%=aah_real_balance%></span> <font color="red">Hash+</font></p>
+<pre>
+AAH 예치수량 1000 초과 Hash파워 증가 250
+AAH 예치수량 500  초과 Hash파워 증가 150
+AAH 예치수량 200  초과 Hash파워 증가  50
+AAH 예치수량 100  초과 Hash파워 증가  20
+AAH 예치수량 50   초과 Hash파워 증가   5
+AAH 예치수량 10   초과 Hash파워 증가   2
+AAH 예치수량 0    초과 Hash파워 증가   1
+</pre>
         </div>
         
         <h1 id="MiningQty">0.0000000000001</h1> 
         <button id="startButton">채굴시작</button>
         <button id="accumulateButton">적립</button>
         <button id="makeLinkButton">초대링크생성</button>
+        <button id="makePartyButton">파티생성</button>
         <input type="hidden" id="email" value="<%=email%>" />
         <input type="hidden" id="userIdx" value="<%=userIdx%>" />
         <br />※적립버튼은 2시간마다 클릭 가능합니다.
@@ -89,6 +99,7 @@
         const startButton = document.getElementById('startButton');
         const accumulateButton = document.getElementById('accumulateButton');
         const makeLinkButton = document.getElementById('makeLinkButton');
+        const makePartyButton = document.getElementById('makePartyButton');
         let _serverSpendTime = "<%=ing_sec%>" ; // 
         let _serverPlusTime = _serverSpendTime * 0.0000000001;  // 0.0000000001
         let MiningQty = _serverPlusTime;
@@ -97,6 +108,15 @@
 
         const updateCount = () => {
             let minusInt = "<%=reffer_cnt%>";
+            let aah_real_balance = "<%=aah_real_balance%>";
+            if (aah_real_balance>1000){ minusInt = minusInt + 250; }
+            else if (aah_real_balance>500){ minusInt = minusInt + 150; }
+            else if (aah_real_balance>200){ minusInt = minusInt + 50; }
+            else if (aah_real_balance>100){ minusInt = minusInt + 20; }
+            else if (aah_real_balance>50){ minusInt = minusInt + 5; }
+            else if (aah_real_balance>10){ minusInt = minusInt + 2; }
+            else if (aah_real_balance>0){ minusInt = minusInt + 1; }
+            
             if(minusInt>500){ minusInt = 500; } // max 500 invate member 
             const randomInterval = 1000 - parseInt(minusInt); // 1초마다
             setTimeout(() => {
@@ -113,6 +133,10 @@
 
         makeLinkButton.addEventListener('click', () => {
             document.location.href='/invite';
+        });
+        
+        makePartyButton.addEventListener('click', () => {
+            document.location.href='/makeParty';
         });
 
         startButton.addEventListener('click', () => {
