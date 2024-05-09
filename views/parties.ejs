@@ -1,0 +1,102 @@
+<!-- views/parties.ejs -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Party List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            background-color: #fff;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        a {
+            color: #333;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .party-item {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .party-name, .party-member {
+            flex: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Party List</h1>
+
+    <!-- 검색 폼 -->
+    <form action="/parties" method="GET">
+        <input type="text" name="search" placeholder="Search...">
+        <button type="submit">Search</button>
+    </form>
+
+    <% if (result1.length> 0) { %>
+        <ul>
+            <% result1.forEach(party=> { %>
+                <li class="party-item">
+                    <span class="party-name">파티명: 
+                        <a href="javascript:jsfn_joinParty('<%=party.idx%>','<%=party.partyName%>')">
+                        <%= party.partyName %></a>
+                    </span>
+                    <span class="party-member">파티원 수: <%= party.party_mem_cnt %></span>
+                </li>
+                <% }); %>
+        </ul>
+    <% } else { %>
+        <p>No parties found.</p>
+    <% } %>
+
+    <!-- 페이징 -->
+    <% if (pageCount> 1) { %>
+        <div>
+            <% for (let i=1; i <=pageCount; i++) { %>
+                <a href="/parties?page=<%= i %><%= searchQuery %>"> <%= i %> </a>
+            <% } %>
+        </div>
+    <% } %>
+    <script>
+        function jsfn_joinParty(p_idx , p_name){
+            let _partyIndex = document.getElementById("partyIndex");
+            let _joinPartyForm = document.getElementById("joinPartyForm");
+            const confirmMessage = "파티" + p_name + " 에 가입하시겠습니까?";
+            const isJoinConfirmed = confirm(confirmMessage);
+            if (isJoinConfirmed) {
+                // alert('파티에 가입하셨습니다!');
+                _partyIndex.value=p_idx;
+                _joinPartyForm.action="/partymemberjoinok";
+                _joinPartyForm.submit();
+            } else {
+                // alert('가입이 취소되었습니다.');
+            }
+        }
+    </script>
+    <form method="POST" id="joinPartyForm">
+        <input type="hidden" id="partyIndex" name="partyIndex" />
+    </form>
+</body>
+</html>

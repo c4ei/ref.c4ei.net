@@ -1,0 +1,24 @@
+<!-- views/error.ejs -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Error</title>
+  <style>
+    /* CSS 스타일링을 추가하세요 */
+  </style>
+</head>
+<body>
+  <div class="error-container">
+    <h1>Error</h1>
+    <% if (err_msg) { %>
+      <p class="error-message"><%= err_msg %></p>
+    <% } else { %>
+      <p class="error-message">An error occurred.</p>
+    <% } %>
+    <a href="/">Back to Home</a>
+  </div>
+</body>
+</html>

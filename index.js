@@ -39,12 +39,17 @@ const getConn = async() => {
 }
 async function loadDB(strSQL){
     const connection = await getConn();
-    // let [rows, fields] = await connection.query(strSQL);
     let rows = await connection.query(strSQL);
-    // console.log(rows);
-    // console.log(strSQL);
     connection.release();
     return rows[0];
+    // loadDB 함수 호출
+    // loadDB(strSQL)
+    // .then(result => {
+    //     console.log(result); // 쿼리 결과 출력
+    // })
+    // .catch(err => {
+    //     console.error(err); // 오류 처리
+    // });
 }
 
 async function saveDB(strSQL){
@@ -96,7 +101,7 @@ app.get('/', async (req, res) => {
             _reffer_id = result[0].reffer_id;
             _reffer_cnt = result[0].reffer_cnt;
             _pub_key = result[0].pub_key;
-            _aah_real_balance = result[0].aah_real_balance;;
+            _aah_real_balance = result[0].aah_real_balance;
         }
         let sql1 = "SELECT COUNT(midx) cnt FROM mininglog WHERE useridx = '"+_userIdx+"'" ;
         let result1 = await loadDB(sql1);
@@ -109,13 +114,12 @@ app.get('/', async (req, res) => {
         }
         if(_ing_sec>86400){_ing_sec = 86400;}
         
-        let sql5 = "SELECT COUNT(idx) party_cnt FROM parties WHERE useridx = '"+_userIdx+"'" ;
+        let sql5 = "SELECT COUNT(party_idx) party_cnt FROM party_member WHERE user_idx = '"+_userIdx+"'" ;
         let result5 = await loadDB(sql5);
         let _party_cnt = result5[0].party_cnt;
         let _party_mem_cnt = 0;
         if(_party_cnt>0){
-            // SELECT idx, partyName , userIdx from parties WHERE userIdx='24';
-            let sql6 = "SELECT count(userIdx) party_mem_cnt from parties WHERE idx=(SELECT idx from parties WHERE userIdx='"+_userIdx+"')";
+            let sql6 = "SELECT count(idx) party_mem_cnt FROM party_member WHERE party_idx=(SELECT party_idx FROM party_member WHERE user_idx='"+_userIdx+"')";
             let result6 = await loadDB(sql6);
             _party_mem_cnt = result6[0].party_mem_cnt;
         }
@@ -288,7 +292,7 @@ app.get('/makeparty', async (req, res) => {
     let result2 = "nodata";
     let partyName = "";
     if(_cnt>0){
-        let sql2 = "SELECT * FROM parties WHERE userIdx='"+_userIdx+"')";
+        let sql2 = "SELECT * FROM parties WHERE userIdx='"+_userIdx+"'";
         result2 = await loadDB(sql2);
         if(result2.length>0){
             partyName= result2[0].partyName;
@@ -310,15 +314,93 @@ app.post('/makepartyok', async (req, res) => {
     var user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
 
     let sql2 = "insert into parties (partyName, userIdx, regip) values ('"+_partyName+"','"+userIdx+"','"+user_ip+"')";
-    try{
-        await saveDB(sql2);
-        
-    } catch(e) {
-        console.log(sql2);
+    await saveDB(sql2);
+    
+    let sql3 = "";
+    sql3 = sql3 + "select idx FROM parties where partyName='"+_partyName+"'";
+    let result3 = await loadDB(sql3);
+    let party_idx = 0;
+    if(result3.length>0){
+        party_idx= result3[0].idx;
     }
+    if(party_idx!=0){
+        let sql4 = "";
+        sql4 = sql4 + "insert into party_member (party_idx, user_idx, regip ) VALUES ('"+party_idx+"','"+userIdx+"','"+user_ip+"')";
+        await saveDB(sql4);
+    }
+
     res.redirect('/');
 });
 
+
+// 파티 목록 및 페이징
+app.get('/parties', async (req, res) => {
+    const resultsPerPage = 10;
+    const page = req.query.page || 1;
+    const offset = (page - 1) * resultsPerPage;
+  
+    let sql1 = "";
+    sql1 = sql1 + " SELECT a.idx, a.partyName, COUNT(b.idx) AS party_mem_cnt ";
+    sql1 = sql1 + " FROM parties a , party_member b  "
+    sql1 = sql1 + " WHERE a.idx = b.party_idx "
+    // 검색 기능 추가
+    const searchTerm = req.query.search;
+    let searchQuery = '';
+    if (searchTerm) {
+        sql1 += ` and a.partyName LIKE '%${searchTerm}%'`;
+        searchQuery = `&search=${searchTerm}`;
+    }
+    sql1 = sql1 + " GROUP BY a.idx, a.partyName     ";
+    sql1 += ` LIMIT ${offset}, ${resultsPerPage}`;
+
+    let result1 = await loadDB(sql1).catch(err => { console.error(err); });
+  
+    // 전체 파티 수 계산
+    let sql2="SELECT COUNT(*) AS count FROM parties"
+    let result2 = await loadDB(sql2);
+    const totalCount = result2[0].count;
+    const pageCount = Math.ceil(totalCount / resultsPerPage);
+
+    res.render('parties', { result1: result1, pageCount, searchQuery });
+  });
+
+
+  app.post('/partymemberjoinok', async (req, res) => {
+    let err_msg = "";
+    // 클라이언트로부터 받은 데이터를 req.body를 통해 가져옵니다.
+    const partyIndex = req.body.partyIndex;
+    let userIdx = req.session.userIdx;
+    var user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
+
+    let sql1 = "";
+    sql1 = sql1 + "select count(idx) p_admin_cnt FROM parties where userIdx='"+userIdx+"'";
+    let result1 = await loadDB(sql1);
+    let _p_admin_cnt= result1[0].p_admin_cnt;
+    if(_p_admin_cnt>0){
+        err_msg = err_msg + "파티장은 파티 삭제 후 파티에 가입 가능 합니다.";
+        res.render('error', { err_msg:err_msg});
+        return;
+    }
+
+    let sql3 = "";
+    sql3 = sql3 + "select count(party_idx) partyCnt FROM party_member where user_idx='"+userIdx+"'";
+    let result3 = await loadDB(sql3);
+    let partyCnt = 0;
+    if(result3.length>0){
+        partyCnt= result3[0].partyCnt;
+    }
+    if(partyCnt==0){
+        let sql4 = "";
+        sql4 = sql4 + "insert into party_member (party_idx, user_idx, regip ) VALUES ('"+partyIndex+"','"+userIdx+"','"+user_ip+"')";
+        await saveDB(sql4);
+    }else{
+        err_msg = err_msg + "이미 파티에 가입 되어있습니다.";
+        res.render('error', { err_msg:err_msg});
+        return;
+    }
+
+    res.redirect('/');
+});
 
 // 적립 요청 처리
 // 데이터베이스 시뮬레이션용 변수
@@ -464,7 +546,7 @@ async function fn_myaddress(myid, myname){
         let user_name = result[0].user_name;
         return address;
     } else {
-        let sql1 = "SELECT idx,address from address WHERE useYN ='Y' AND mappingYN='N' ORDER BY idx LIMIT 1";
+        let sql1 = "SELECT idx,address FROM address WHERE useYN ='Y' AND mappingYN='N' ORDER BY idx LIMIT 1";
         let result1 = sync_connection.query(sql1);
         if(result1.length>0){
             let addr_idx = result1[0].idx;
@@ -496,7 +578,7 @@ async function fn_myaddress(myid, myname){
 }
 
 async function setImportAah(aah_addr){
-    let sql1 = "SELECT privateKey from address WHERE address='"+aah_addr+"'"; // idx,address,privateKey
+    let sql1 = "SELECT privateKey FROM address WHERE address='"+aah_addr+"'"; // idx,address,privateKey
     let result = sync_connection.query(sql1);
     let privateKey = result[0].privateKey;
     try {

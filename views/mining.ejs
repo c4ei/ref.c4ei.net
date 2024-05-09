@@ -50,7 +50,10 @@
         button:hover {
             background-color: #0056b3;
         }
-
+        #clock {
+            font-size: 48px;
+            color: #333;
+        }
     </style>
 </head>
 <body>
@@ -82,10 +85,47 @@ AAH 예치수량 0    초과 Hash파워 증가   1
         <button id="startButton">채굴시작</button>
         <button id="accumulateButton">적립</button>
         <button id="makeLinkButton">초대링크생성</button>
-        <button id="makePartyButton">파티생성</button>
+        <button id="makePartyButton">파티</button>
         <input type="hidden" id="email" value="<%=email%>" />
         <input type="hidden" id="userIdx" value="<%=userIdx%>" />
         <br />※적립버튼은 2시간마다 클릭 가능합니다.
+        <div id="clock">2:00:00</div>
+        <script>
+        function startCountdown() {
+            let _remainTime = "<%=ing_sec%>" ;
+            var time = 7200; // 2 hours in seconds
+            if(_remainTime>7200){
+                time = 0;
+            }else{
+                time = time - _remainTime;
+            }
+            var clock = document.getElementById('clock');
+
+            var countdown = setInterval(function() {
+            var hours = Math.floor(time / 3600);
+            var minutes = Math.floor((time % 3600) / 60);
+            var seconds = time % 60;
+
+            // Add leading zeros if necessary
+            hours = (hours < 10) ? "0" + hours : hours;
+            minutes = (minutes < 10) ? "0" + minutes : minutes;
+            seconds = (seconds < 10) ? "0" + seconds : seconds;
+
+            // Display the countdown
+            clock.textContent = hours + ":" + minutes + ":" + seconds;
+
+            // Check if the countdown is finished
+            if (time <= 0) {
+                clearInterval(countdown);
+                clock.textContent = "00:00:00";
+            } else {
+                time--;
+            }
+            }, 1000); // Update every second
+        }
+
+        startCountdown();
+        </script>
     </div>
     <script>
         function jsfn_lyShow(){
@@ -121,7 +161,7 @@ AAH 예치수량 0    초과 Hash파워 증가   1
             minusInt = minusInt + parseInt(_party_mem_cnt);
             
             if(minusInt>500){ minusInt = 500; } // max 500 invate member 
-            const randomInterval = 1000 - parseInt(minusInt); // 1초마다
+            const randomInterval = 1100 - parseInt(minusInt); // 1초마다
             setTimeout(() => {
                 MiningQty += 0.0000000001; // 0.0000000001 씩 증가
                 const integerPart = Math.floor(MiningQty); // 정수 부분
@@ -139,7 +179,8 @@ AAH 예치수량 0    초과 Hash파워 증가   1
         });
         
         makePartyButton.addEventListener('click', () => {
-            document.location.href='/makeParty';
+            // document.location.href='/makeParty';
+            document.location.href='/parties';
         });
 
         startButton.addEventListener('click', () => {
@@ -194,5 +235,6 @@ AAH 예치수량 0    초과 Hash파워 증가   1
             accumulateButton.style.backgroundColor = "#c5cacf";
         }
     </script>
+    
 </body>
 </html>
