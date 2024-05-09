@@ -75,6 +75,7 @@ const iv = process.env.AES_IV; // Initialization Vector (16 바이트)
 app.set('view engine', 'ejs');
 app.set('views', __dirname + '/views');
 
+// / 와 mining
 app.get('/', async (req, res) => {
     if (!req.session.email) {
         res.redirect('/login');
@@ -82,17 +83,34 @@ app.get('/', async (req, res) => {
         // res.sendFile(STATIC_PATH + '/index.html')
         let _email = req.session.email;
         let _userIdx = req.session.userIdx;
-
-        let sql = "SELECT userIdx, aah_balance, reffer_id, reffer_cnt FROM users WHERE userIdx='"+_userIdx+"'";
+        let _aah_real_balance = "0";
+        let _aah_balance = "0";
+        let _reffer_id = "0";
+        let _reffer_cnt = "0";
+        let _pub_key = "";
+        let sql = "SELECT userIdx, pub_key, aah_balance, aah_real_balance, reffer_id, reffer_cnt FROM users WHERE userIdx='"+_userIdx+"'";
         let result = await loadDB(sql);
         // console.log(result.length +" : result.length" + JSON.stringify(result[0]) );
         if(result.length>0){
             _aah_balance = result[0].aah_balance;
             _reffer_id = result[0].reffer_id;
             _reffer_cnt = result[0].reffer_cnt;
+            _pub_key = result[0].pub_key;
+            _aah_real_balance = result[0].aah_real_balance;;
         }
+        let sql1 = "SELECT COUNT(midx) cnt FROM mininglog WHERE useridx = '"+_userIdx+"'" ;
+        let result1 = await loadDB(sql1);
+        let _cnt = result1[0].cnt;
+        let _ing_sec = 0;
+        if(_cnt>0){
+            let sql2 = "SELECT TIMESTAMPDIFF(second, regdate, NOW()) AS sec FROM mininglog WHERE useridx='"+_userIdx+"' AND midx=(SELECT MAX(midx) FROM mininglog WHERE useridx='"+_userIdx+"')";
+            let result2 = await loadDB(sql2);
+            _ing_sec = result2[0].sec;
+        }
+        if(_ing_sec>86400){_ing_sec = 86400;}
         
-        res.render('mining', { email:_email , userIdx:_userIdx ,aah_balance:_aah_balance, reffer_id:_reffer_id , reffer_cnt:_reffer_cnt});
+        res.render('mining', { email:_email , userIdx:_userIdx ,aah_balance:_aah_balance, reffer_id:_reffer_id 
+            , reffer_cnt:_reffer_cnt, aah_address : _pub_key , aah_real_balance:_aah_real_balance, ing_sec:_ing_sec});
     }
 });
 
@@ -116,7 +134,7 @@ app.post('/login', async (req, res) => {
         // console.log(result.length +" : result.length");
         return res.status(401).send('회원가입을 먼저 하세요.');
     }
-    
+    let _aah_real_balance = await getBalanceAah(result[0].pub_key);
     req.session.email = email;
     req.session.userIdx = result[0].userIdx;
     let _loginDailyYYYYMMDD =  result[0].loginDailyYYYYMMDD;
@@ -124,9 +142,9 @@ app.post('/login', async (req, res) => {
     // console.log(_loginDailyYYYYMMDD+" : _loginDailyYYYYMMDD");
     let sql2 = " ";
     if(_loginDailyYYYYMMDD==_curYYYYMMDD){
-        sql2 = sql2 + " update users set loginCnt=loginCnt+1 , logindate=now() where userIdx='"+result[0].userIdx+"'";
+        sql2 = sql2 + " update users set aah_real_balance='"+_aah_real_balance+"', loginCnt=loginCnt+1 , logindate=now() where userIdx='"+result[0].userIdx+"'";
     }else{
-        sql2 = sql2 + " update users set loginCnt=loginCnt+1 , loginDailyCnt=loginDailyCnt+1 , logindate=now(), loginDailydate=now() where userIdx='"+result[0].userIdx+"'";
+        sql2 = sql2 + " update users set aah_real_balance='"+_aah_real_balance+"', loginCnt=loginCnt+1 , loginDailyCnt=loginDailyCnt+1 , logindate=now(), loginDailydate=now() where userIdx='"+result[0].userIdx+"'";
     }
     
     try{
@@ -257,14 +275,30 @@ app.post('/createParty', (req, res) => {
 app.post('/accumulate', async (req, res) => {
     const { MiningQty , userIdx , email } = req.body;
     var user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
-    let sql1 = "UPDATE users set aah_balance = CAST(aah_balance AS DECIMAL(35,13)) + CAST('"+MiningQty+"' AS DECIMAL(35,13)), last_reg=now(), last_ip='"+user_ip+"' WHERE userIdx = '"+userIdx+"'";
-    try{
-        await saveDB(sql1);
-        console.log('적립된 포인트: %s / %s / %s', MiningQty , userIdx , email);
-        let _memo2 = email +" WEB MINING ";
-        await fn_setMiningLog(userIdx,MiningQty,_memo2,user_ip);
-    } catch(e) {
-        console.log(sql);
+    let _err = ""
+    let sql1 = "SELECT COUNT(midx) cnt FROM mininglog WHERE useridx = '"+userIdx+"'" ;
+    let result1 = await loadDB(sql1);
+    let _cnt = result1[0].cnt;
+    let _ing_sec = 0;
+    if(_cnt>0){
+        let sql2 = "SELECT TIMESTAMPDIFF(second, regdate, NOW()) AS sec FROM mininglog WHERE useridx='"+userIdx+"' AND midx=(SELECT MAX(midx) FROM mininglog WHERE useridx='"+userIdx+"')";
+        let result2 = await loadDB(sql2);
+        _ing_sec = result2[0].sec;
+    }
+    if(_ing_sec>86400){_ing_sec = 86400;}
+
+    if(_cnt==0||_ing_sec>7200){
+        let sql2 = "UPDATE users set aah_balance = CAST(aah_balance AS DECIMAL(35,13)) + CAST('"+MiningQty+"' AS DECIMAL(35,13)), last_reg=now(), last_ip='"+user_ip+"' WHERE userIdx = '"+userIdx+"'";
+        try{
+            await saveDB(sql2);
+            console.log('적립된 포인트: %s / %s / %s', MiningQty , userIdx , email);
+            let _memo2 = email +" WEB MINING ";
+            await fn_setMiningLog(userIdx,MiningQty,_memo2,user_ip);
+        } catch(e) {
+            console.log(sql2);
+        }
+    }else{
+        _err = _err + email +" : 2 hours not passed";
     }
 
     res.sendStatus(200);
@@ -425,8 +459,9 @@ async function setImportAah(aah_addr){
 async function getBalanceAah(aah_addr){
     var wallet_balance = await web3.eth.getBalance(aah_addr, function(error, result) {
         wallet_balance = web3.utils.fromWei(result, "ether");
-        return wallet_balance;
+        // console.log(wallet_balance+":wallet_balance - getBalanceAah");
     });
+    return wallet_balance;
 }
 
 async function fn_sendMining(ctx, send_addr, rcv_addr, rcv_amt, chatId, fromId){

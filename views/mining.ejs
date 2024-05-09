@@ -56,29 +56,49 @@
 <body>
     <div class="container">
         <h1>AAH MINING</h1>
-        <p>이 페이지는 AAH WEB MINING 을 표시하는 페이지입니다.</p>
+        <!-- <p>이 페이지는 AAH WEB MINING 을 표시하는 페이지입니다.</p> -->
         <div class="user-info">
-            <p>Email 주소 : <%=email%></p>
-            <p>적립된 AAH : <span id="accumulatedCount"><%=aah_balance%></span></p>
+            <p>적립예정 AAH 수량 : <span id="accumulatedCount"><%=aah_balance%></span></p>
             <p>내 추천인 수 : <%=reffer_cnt%></p>
         </div>
-        <h1 id="MiningQty">0.0000000000001</h1>
-        <button id="startButton">시작</button>
+        <button id="showMoreButton" onclick="jsfn_lyShow()">추가정보</button>
+        <div id="lyNoShow" style="display: none;">
+            <p>Email 주소 : <%=email%></p>
+            <p>AAH 주소 : <br /> <span id="aah_address"><%=aah_address%></span></p>
+            <p>주소상 AAH 수량 : <span id="aah_real_balance"><%=aah_real_balance%></span></p>
+        </div>
+        
+        <h1 id="MiningQty">0.0000000000001</h1> 
+        <button id="startButton">채굴시작</button>
         <button id="accumulateButton">적립</button>
         <button id="makeLinkButton">초대링크생성</button>
         <input type="hidden" id="email" value="<%=email%>" />
         <input type="hidden" id="userIdx" value="<%=userIdx%>" />
+        <br />※적립버튼은 2시간마다 클릭 가능합니다.
     </div>
     <script>
+        function jsfn_lyShow(){
+            let lyNoShow = document.getElementById("lyNoShow");
+            if(lyNoShow.style.display=="none"){
+                lyNoShow.style.display="block";
+            }else{
+                lyNoShow.style.display="none";
+            }
+        }
         const MiningQtyDisplay = document.getElementById('MiningQty');
         const startButton = document.getElementById('startButton');
         const accumulateButton = document.getElementById('accumulateButton');
         const makeLinkButton = document.getElementById('makeLinkButton');
-        let MiningQty = 0;
+        let _serverSpendTime = "<%=ing_sec%>" ; // 
+        let _serverPlusTime = _serverSpendTime * 0.0000000001;  // 0.0000000001
+        let MiningQty = _serverPlusTime;
+        // alert(_serverPlusTime+":_serverPlusTime/n"+"<%=ing_sec%>");
         let intervalId;
 
         const updateCount = () => {
-            const randomInterval = 1000; // 1초마다
+            let minusInt = "<%=reffer_cnt%>";
+            if(minusInt>500){ minusInt = 500; } // max 500 invate member 
+            const randomInterval = 1000 - parseInt(minusInt); // 1초마다
             setTimeout(() => {
                 MiningQty += 0.0000000001; // 0.0000000001 씩 증가
                 const integerPart = Math.floor(MiningQty); // 정수 부분
@@ -87,9 +107,7 @@
                 const displayCount = integerPart + "." + decimalPart + randomDigits; // 정수부분과 소수부분 그리고 랜덤한 숫자 합치기
                 MiningQtyDisplay.textContent = displayCount;
                 MiningQtyDisplay.style.color = 'red';
-                setTimeout(() => {
-                    MiningQtyDisplay.style.color = 'black';
-                }, 200);
+                setTimeout(() => { MiningQtyDisplay.style.color = 'black'; }, 200);
             }, randomInterval);
         };
 
@@ -102,6 +120,9 @@
                 updateCount();
                 intervalId = setInterval(updateCount, 1000);
             }
+            startButton.disabled=true;
+            startButton.style.backgroundColor = "#c5cacf";
+            // alert('click');
         });
 
         accumulateButton.addEventListener('click', () => {
@@ -134,7 +155,17 @@
             .catch(error => {
                 alert('네트워크 오류:', error);
             });
+            startButton.disabled=false;
+            startButton.style.backgroundColor = "#007bff";
         });
+        startButton.click();
+        if(_serverSpendTime>7200){
+            accumulateButton.disabled = false;
+            accumulateButton.style.backgroundColor = "#007bff";
+        }else{
+            accumulateButton.disabled = true;
+            accumulateButton.style.backgroundColor = "#c5cacf";
+        }
     </script>
 </body>
 </html>
