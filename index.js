@@ -105,7 +105,7 @@ app.post('/login', async (req, res) => {
     if (!email || !password) {
         return res.status(400).send('EMAIL과 비밀번호를 모두 입력해주세요.');
     }
-    let sql = "SELECT * FROM users WHERE email = '"+email+"'";
+    let sql = "SELECT *, DATE_FORMAT(loginDailydate, '%y%m%d') AS loginDailyYYYYMMDD, DATE_FORMAT(now(), '%y%m%d') AS curYYYYMMDD FROM users WHERE email = '"+email+"'";
     let result = await loadDB(sql);
     // console.log(result[0].length +" : result[0].length");
     if(result.length>0){
@@ -119,7 +119,22 @@ app.post('/login', async (req, res) => {
     
     req.session.email = email;
     req.session.userIdx = result[0].userIdx;
-    // res.redirect('/invite');
+    let _loginDailyYYYYMMDD =  result[0].loginDailyYYYYMMDD;
+    let _curYYYYMMDD =  result[0].curYYYYMMDD;
+    // console.log(_loginDailyYYYYMMDD+" : _loginDailyYYYYMMDD");
+    let sql2 = " ";
+    if(_loginDailyYYYYMMDD==_curYYYYMMDD){
+        sql2 = sql2 + " update users set loginCnt=loginCnt+1 , logindate=now() where userIdx='"+result[0].userIdx+"'";
+    }else{
+        sql2 = sql2 + " update users set loginCnt=loginCnt+1 , loginDailyCnt=loginDailyCnt+1 , logindate=now(), loginDailydate=now() where userIdx='"+result[0].userIdx+"'";
+    }
+    
+    try{
+        await saveDB(sql2);
+    }catch(e){
+        console.log(sql2);
+    }
+
     res.redirect('/');
 });
 
