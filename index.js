@@ -109,7 +109,18 @@ app.get('/', async (req, res) => {
         }
         if(_ing_sec>86400){_ing_sec = 86400;}
         
-        res.render('mining', { email:_email , userIdx:_userIdx ,aah_balance:_aah_balance, reffer_id:_reffer_id 
+        let sql5 = "SELECT COUNT(idx) party_cnt FROM parties WHERE useridx = '"+_userIdx+"'" ;
+        let result5 = await loadDB(sql5);
+        let _party_cnt = result5[0].party_cnt;
+        let _party_mem_cnt = 0;
+        if(_party_cnt>0){
+            // SELECT idx, partyName , userIdx from parties WHERE userIdx='24';
+            let sql6 = "SELECT count(userIdx) party_mem_cnt from parties WHERE idx=(SELECT idx from parties WHERE userIdx='"+_userIdx+"')";
+            let result6 = await loadDB(sql6);
+            _party_mem_cnt = result6[0].party_mem_cnt;
+        }
+
+        res.render('mining', { email:_email , userIdx:_userIdx ,aah_balance:_aah_balance, party_mem_cnt:_party_mem_cnt, reffer_id:_reffer_id 
             , reffer_cnt:_reffer_cnt, aah_address : _pub_key , aah_real_balance:_aah_real_balance, ing_sec:_ing_sec});
     }
 });
@@ -123,6 +134,8 @@ app.post('/login', async (req, res) => {
     if (!email || !password) {
         return res.status(400).send('EMAIL과 비밀번호를 모두 입력해주세요.');
     }
+    // email = jsfnRepSQLinj(email);
+    // password = jsfnRepSQLinj(password);
     let sql = "SELECT *, DATE_FORMAT(loginDailydate, '%y%m%d') AS loginDailyYYYYMMDD, DATE_FORMAT(now(), '%y%m%d') AS curYYYYMMDD FROM users WHERE email = '"+email+"'";
     let result = await loadDB(sql);
     // console.log(result[0].length +" : result[0].length");
@@ -165,6 +178,8 @@ app.post('/signup', async (req, res) => {
     if (!email || !password) {
         return res.status(400).send('EMAIL과 비밀번호를 모두 입력해주세요.');
     }
+    // email = jsfnRepSQLinj(email);
+    // password = jsfnRepSQLinj(password);
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = { email, password: hashedPassword };
@@ -220,6 +235,11 @@ app.post('/joinok', async (req, res) => {
     if (!code || !email || !password || !fid) {
         return res.status(400).send('코드, EMAIL, 비밀번호가 필요합니다.');
     }
+    // code = jsfnRepSQLinj(code);
+    // email = jsfnRepSQLinj(email);
+    // password = jsfnRepSQLinj(password);
+    // fid = jsfnRepSQLinj(fid);
+
     let reg_idx = await fn_getIdFromEmail(email);
     if(reg_idx>0){
         //이미 가입된 email 입니다.
@@ -279,19 +299,24 @@ app.get('/makeparty', async (req, res) => {
     res.render('makeparty', { email:_email, userIdx:_userIdx ,partyName:partyName, result2:result2 });
 });
 
-app.post('/createParty', (req, res) => {
+app.post('/makepartyok', async (req, res) => {
     const { partyName } = req.body;
     if (!req.session.email || !partyName) {
         return res.status(400).send('파티 이름과 로그인이 필요합니다.');
     }
-    partyName = jsfnRepSQLinj(partyName);
-    const email = req.session.email;
-    const newParty = { partyName, email };
-    db.query('INSERT INTO parties SET ?', newParty, (err, result) => {
-        if (err) throw err;
-        console.log('새로운 파티가 생성되었습니다.');
-        res.send('새로운 파티가 생성되었습니다.');
-    });
+    let _partyName = jsfnRepSQLinj(partyName);
+    // const email = req.session.email;
+    let userIdx = req.session.userIdx;
+    var user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
+
+    let sql2 = "insert into parties (partyName, userIdx, regip) values ('"+_partyName+"','"+userIdx+"','"+user_ip+"')";
+    try{
+        await saveDB(sql2);
+        
+    } catch(e) {
+        console.log(sql2);
+    }
+    res.redirect('/');
 });
 
 
@@ -300,6 +325,9 @@ app.post('/createParty', (req, res) => {
 // let accumulatedPoints = 0;
 app.post('/accumulate', async (req, res) => {
     const { MiningQty , userIdx , email } = req.body;
+    // MiningQty = jsfnRepSQLinj(MiningQty);
+    // userIdx = jsfnRepSQLinj(userIdx);
+    // email = jsfnRepSQLinj(email);
     var user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
     let _err = ""
     let sql1 = "SELECT COUNT(midx) cnt FROM mininglog WHERE useridx = '"+userIdx+"'" ;

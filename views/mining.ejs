@@ -60,6 +60,7 @@
         <div class="user-info">
             <p>적립예정 AAH 수량 : <span id="accumulatedCount"><%=aah_balance%></span></p>
             <p>내 추천인 수 : <%=reffer_cnt%> <font color="red">Hash+</font></p>
+            <p>내 파티원 수 : <%=party_mem_cnt%> <font color="red">Hash+</font></p>
         </div>
         <button id="showMoreButton" onclick="jsfn_lyShow()">추가정보</button>
         <div id="lyNoShow" style="display: none;">
@@ -116,6 +117,8 @@ AAH 예치수량 0    초과 Hash파워 증가   1
             else if (aah_real_balance>50){ minusInt = minusInt + 5; }
             else if (aah_real_balance>10){ minusInt = minusInt + 2; }
             else if (aah_real_balance>0){ minusInt = minusInt + 1; }
+            let _party_mem_cnt = "<%=party_mem_cnt%>";
+            minusInt = minusInt + parseInt(_party_mem_cnt);
             
             if(minusInt>500){ minusInt = 500; } // max 500 invate member 
             const randomInterval = 1000 - parseInt(minusInt); // 1초마다

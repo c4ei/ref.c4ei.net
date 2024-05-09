@@ -62,18 +62,34 @@ button:hover {
 
         <h1>PARTY 가입 / 생성 페이지</h1>
         <div class="invite-link">
-            <p>초대 코드:</p>
-            <input type="text" id="partyName" name="partyName" value="<%=partyName%>" readonly>
-            <button onclick="jsfn_make()">생성</button>
+            <!-- <p>초대 코드:</p> -->
+            <form name="form_party" id="form_party" method="POST">
+                <div class="form-group">
+                    <label for="partyName">파티명:</label>
+                    <input type="text" class="form-control" id="partyName" name="partyName" value="<%=partyName%>" required maxlength="30">
+                </div>
+
+                <button type="button" onclick="jsfn_submit();" class="btn btn-primary btn-block">파티생성하기</button>
+            </form>
         </div>
     </div>
-
     <script>
-        function jsfn_make() {
-            // const inviteCodeInput = document.querySelector('.invite-link input');
-            // inviteCodeInput.select();
-            // document.execCommand('copy');
-            alert('초대 코드가 복사되었습니다!');
+        function jsfn_submit(){
+            let _form_party = document.getElementById("form_party");
+            let _partyName = document.getElementById("partyName");
+            const regex = /^[ㄱ-ㅎ가-힣a-zA-Z0-9]+$/;
+            if(!regex.test(_partyName.value)){
+                alert('한글 영문 숫자만 입력 가능 합니다.');
+                _partyName.focus();
+                return;
+            }
+            if(_partyName.value.length<6){
+                alert('partyName 을 입력하세요.');
+                _partyName.focus();
+                return;
+            }
+            _form_party.action="/makepartyok";
+            _form_party.submit();
         }
     </script>
 </body>
