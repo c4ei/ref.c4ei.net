@@ -40,6 +40,7 @@ const getConn = async() => {
 async function loadDB(strSQL){
     const connection = await getConn();
     let rows = await connection.query(strSQL);
+    // console.log(strSQL);
     connection.release();
     return rows[0];
     // loadDB 함수 호출
@@ -98,7 +99,8 @@ app.get('/', async (req, res) => {
         let _reffer_id = "0";
         let _reffer_cnt = "0";
         let _pub_key = "";
-        let sql = "SELECT userIdx, pub_key, aah_balance, aah_real_balance, reffer_id, reffer_cnt FROM users WHERE userIdx='"+_userIdx+"'";
+        let _user_add_addr="";
+        let sql = "SELECT userIdx, pub_key, aah_balance, aah_real_balance, reffer_id, reffer_cnt, user_add_addr FROM users WHERE userIdx='"+_userIdx+"'";
         let result = await loadDB(sql);
         // console.log(result.length +" : result.length" + JSON.stringify(result[0]) );
         if(result.length>0){
@@ -107,6 +109,7 @@ app.get('/', async (req, res) => {
             _reffer_cnt = result[0].reffer_cnt;
             _pub_key = result[0].pub_key;
             _aah_real_balance = result[0].aah_real_balance;
+            _user_add_addr = result[0].user_add_addr;
         }
         let sql1 = "SELECT COUNT(midx) cnt FROM mininglog WHERE useridx = '"+_userIdx+"'" ;
         let result1 = await loadDB(sql1);
@@ -130,7 +133,7 @@ app.get('/', async (req, res) => {
         }
 
         res.render('mining', { email:_email , userIdx:_userIdx ,aah_balance:_aah_balance, party_mem_cnt:_party_mem_cnt, reffer_id:_reffer_id 
-            , reffer_cnt:_reffer_cnt, aah_address : _pub_key , aah_real_balance:_aah_real_balance, ing_sec:_ing_sec});
+            , reffer_cnt:_reffer_cnt, aah_address : _pub_key , aah_real_balance:_aah_real_balance, ing_sec:_ing_sec, user_add_addr:_user_add_addr});
     }
 });
 
@@ -174,7 +177,7 @@ app.post('/login', async (req, res) => {
     // console.log(_loginDailyYYYYMMDD+" : _loginDailyYYYYMMDD");
     let sql2 = " ";
     if(_loginDailyYYYYMMDD==_curYYYYMMDD){
-        sql2 = sql2 + " update users set aah_real_balance='"+_aah_real_balance+"', loginCnt=loginCnt+1 , logindate=now() where userIdx='"+result[0].userIdx+"'";
+        sql2 = sql2 + " update users set aah_real_balance='"+_aah_real_balance+"', loginCnt=loginCnt+1 , logindate=now(), reqAAH_ingYN='N' where userIdx='"+result[0].userIdx+"'";
     }else{
         sql2 = sql2 + " update users set aah_real_balance='"+_aah_real_balance+"', loginCnt=loginCnt+1 , loginDailyCnt=loginDailyCnt+1 , logindate=now(), loginDailydate=now() where userIdx='"+result[0].userIdx+"'";
     }
@@ -440,7 +443,7 @@ app.get('/parties', async (req, res) => {
     let myP_name = await jsfn_getPartyName(myP_idx);
 
     res.render('parties', { result1: result1, pageCount, searchQuery , myP_idx:myP_idx, myP_name:myP_name});
-  });
+});
 
 app.post('/partymemberjoinok', async (req, res) => {
     let err_msg = "";
@@ -497,7 +500,7 @@ app.post('/accumulate', async (req, res) => {
     }
     var user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
     let _err = ""
-    let sql1 = "SELECT COUNT(midx) cnt FROM mininglog WHERE useridx = '"+userIdx+"'" ;
+    let sql1 = "SELECT COUNT(midx) cnt FROM mininglog WHERE useridx='"+userIdx+"'" ;
     let result1 = await loadDB(sql1);
     let _cnt = result1[0].cnt;
     let _ing_sec = 0;
@@ -526,46 +529,98 @@ app.post('/accumulate', async (req, res) => {
 });
 
 app.post('/sendAAH', async (req, res) => {
-    const { aah_balance , userIdx , email } = req.body;
+    const { f_aah_balance , f_userIdx , f_email } = req.body;
     // MiningQty = jsfnRepSQLinj(MiningQty);
     // userIdx = jsfnRepSQLinj(userIdx);
     // email = jsfnRepSQLinj(email);
     let err_msg="";
     let chk_email = req.session.email;
     let chk_userIdx = req.session.userIdx;
-    if(userIdx!=chk_userIdx || email!=chk_email){
-        err_msg= err_msg +" 세션에 문제가있습니다. 다시 로그인 해 주세요.";
-        res.render('error', { err_msg:err_msg});
+    if(f_userIdx!=chk_userIdx || f_email!=chk_email){
+        let _errAlert = "<script>alert('세션에 문제가있습니다. 다시 로그인 해 주세요.');document.location.href='/login';</script>";
+        res.send(_errAlert);
         return;
     }
+
     var user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
-    let sql = "SELECT userIdx, pub_key, aah_balance, aah_real_balance, reqAAH_ingYN FROM users WHERE userIdx='"+chk_userIdx+"'";
+    let sql = "SELECT userIdx, pub_key, aah_balance, aah_real_balance, reqAAH_ingYN, IFNULL(user_add_addr, '') as user_add_addr FROM users WHERE userIdx='"+chk_userIdx+"'";
     let result = await loadDB(sql);
     // console.log(result.length +" : result.length" + JSON.stringify(result[0]) );
-    let _aah_balance = aah_balance; // from DB value
+    let _aah_balance = f_aah_balance; // from DB value
     let _reqAAH_ingYN = "N";
+    let _user_add_addr="";
     if(result.length>0){
         _aah_balance = result[0].aah_balance;
         _pub_key     = result[0].pub_key;
         _reqAAH_ingYN = result[0].reqAAH_ingYN;
+        _user_add_addr = result[0].user_add_addr;
     }
 
     let sql0 = "SELECT count(userIdx) AS cnt FROM sendlog WHERE userIdx ='"+chk_userIdx+"' and memo='AAH_MINING' and regdate > DATE_ADD(now(), INTERVAL -7 HOUR)";
-    let result0 = loadDB(sql0);
-    let mining_Cnt = 0;
-    if(result0.length>0){ mining_Cnt = result0[0].cnt; }
+    let result0 = await loadDB(sql0);
+    let mining_Cnt = result0[0].cnt;
+    // console.log(mining_Cnt+":mining_Cnt");
     if(mining_Cnt==0){
         if (_reqAAH_ingYN=='N'){
-            err_msg = err_msg + fn_sendMining(process.env.AAH_BANK_ADDRESS, _pub_key, _aah_balance, chk_userIdx, user_ip);
+            if(_user_add_addr==""){
+                err_msg = err_msg + fn_sendMining(process.env.AAH_BANK_ADDRESS, _pub_key, _aah_balance, chk_userIdx, user_ip);
+            }else{
+                err_msg = err_msg + fn_sendMining(process.env.AAH_BANK_ADDRESS, _user_add_addr, _aah_balance, chk_userIdx, user_ip);
+            }
+            let _errAlert = "<script>alert('"+_aah_balance+"' AAH 전송이 완료되었습니다.);document.location.href='/mining';</script>";
+            res.send(_errAlert);
+            return;
         }else{
-            err_msg = err_msg + "이미 처리중입니다. (It is already being processed.)";
-            res.render('error', { err_msg:err_msg});
+            let _errAlert = "<script>alert('이미 처리중입니다. (It is already being processed.)');document.location.href='/mining';</script>";
+            res.send(_errAlert);
             return;
         }
+        // res.sendStatus(200);
+    }else{
+        let _errAlert = "<script>alert('전송은 8시간 마다 가능 합니다. (Transmission is possible every 8 hours.)');document.location.href='/mining';</script>";
+        res.send(_errAlert);
+        return;
     }
-    console.log(err_msg);
+    // console.log(err_msg);
 
-    res.sendStatus(200);
+    res.redirect('/');
+    return;
+});
+
+app.get('/add_address', async (req, res) => {
+    if (!req.session.email) {
+        res.redirect('/login');
+        return;
+        //return res.status(401).send('로그인이 필요합니다.');
+    }
+
+    const _email = req.session.email;
+    const _userIdx = req.session.userIdx;
+
+    let sql1 = "SELECT user_add_addr FROM users WHERE userIdx='"+_userIdx+"'" ;
+    let result1 = await loadDB(sql1);
+    let _user_add_addr = result1[0].user_add_addr;
+
+    res.render('add_address', { email:_email, userIdx:_userIdx ,user_add_addr:_user_add_addr });
+});
+
+app.post('/add_addrok', async (req, res) => {
+    let err_msg="";
+    const { user_add_addr } = req.body;
+    if (!req.session.email || !user_add_addr) {
+        res.redirect('/login');
+        return;
+    }
+    let _user_add_addr = jsfnRepSQLinj(user_add_addr);
+    _user_add_addr = await web3.utils.toChecksumAddress(_user_add_addr);
+    // const email = req.session.email;
+    let userIdx = req.session.userIdx;
+    var user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
+
+    let sql2 = "update users set user_add_addr='"+_user_add_addr+"',last_ip='"+user_ip+"',last_reg=now() where userIdx='"+userIdx+"'";
+    await saveDB(sql2);
+
+    res.redirect('/');
 });
 
 
@@ -707,8 +762,8 @@ async function fn_sendMining(send_addr, rcv_addr, rcv_amt, fromId, user_ip){
             });
         }catch(e){
             // i18n.__('mining_lang_send_mining_failure_aah') //#### AAH_MINING 발송 ####\n채굴중 문제가 발생 하였습니다.
-            console.log(ctx, chatId, i18n.__('mining_lang_send_mining_failure_aah'));
             tr_msg = tr_msg + "" + i18n.__('mining_lang_send_mining_failure_aah');
+            console.log("755 : "+e);
         }
     }
     return tr_msg;

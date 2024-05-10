@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AAH - All About Healthy Network" />
+    <meta name="author" content="c4ei.net">
+    <link rel="apple-touch-icon" href="/favicon.ico" />
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+    <title>입금 주소 변경</title>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #f0f0f0;
+}
+
+.container {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+h1 {
+    color: #333;
+}
+
+.invite-link {
+    margin-top: 20px;
+}
+
+input[type="text"] {
+    width: 320px;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-right: 10px;
+}
+
+button {
+    padding: 8px 16px;
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+</style>
+</head>
+<body>
+    <div class="container">
+        <a href="/">HOME</a> 
+
+        <h1>입금 주소 추가 페이지</h1>
+        <div class="invite-link">
+            <!-- <p>초대 코드:</p> -->  
+            <form name="form_addr" id="form_addr" method="POST">
+                <div class="form-group">
+                    <label for="user_add_addr">입금 주소:</label>
+                    <input type="text" class="form-control" id="user_add_addr" name="user_add_addr" value="<%=user_add_addr%>" required maxlength="63">
+                </div>
+                <br/>
+                <font color="red">
+                    ※입금 주소를 추가 하면 추가한 입금 주소로 AAH 가 전송 됩니다.<br/>
+                    ※If you add a deposit address, <br/>AAH will be sent to the added deposit address..
+                </font>
+                <br/><br/>
+                <button type="button" onclick="jsfn_submit();" class="btn btn-primary btn-block">입금 주소 추가 하기</button>
+            </form>
+        </div>
+    </div>
+    <script>
+        function jsfn_submit(){
+            let _form_addr = document.getElementById("form_addr");
+            let _address = document.getElementById("user_add_addr");
+            const regex = /^[ㄱ-ㅎ가-힣a-zA-Z0-9]+$/;
+            if(!regex.test(_address.value)){
+                alert('한글 영문 숫자만 입력 가능 합니다.');
+                _address.focus();
+                return;
+            }
+            if(_address.value.length<6){
+                alert('user_add_addr 을 입력하세요.');
+                _address.focus();
+                return;
+            }
+            _form_addr.action="/add_addrok";
+            _form_addr.submit();
+        }
+    </script>
+</body>
+</html>

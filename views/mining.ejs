@@ -97,6 +97,16 @@
                  else if (aah_real_balance>10)  { %> <font color="red">Hash+ 2</font> <% } 
                  else if (aah_real_balance>0)   { %> <font color="red">Hash+ 1</font> <% } %>
             </p>
+            <button id="addAddrButton" style="width: 250px;height: 30px;padding: 2px 2px 2px 2px;background-color: chartreuse;color: #ff0000;"
+            ><a href="/add_address">전송용 지갑주소 추가</a></button>
+            <% if(user_add_addr!=null){ %>
+            <p>추가 AAH 주소 : <br /> <span id="user_add_addr">
+                <a href ="https://exp.c4ex.net/address/<%=user_add_addr%>" target="_blank"><%=user_add_addr%></a></span><br /> 
+                ※추가 AAH 주소 존재 시 해당 주소로 전송 됩니다.<br />
+                ※If an additional AAH address exists, it will be sent to that address.
+            </p>
+            <% } %>
+
 <!-- AAH 예치수량 1000 초과 Hash파워 증가 250
 AAH 예치수량 500  초과 Hash파워 증가 150
 AAH 예치수량 200  초과 Hash파워 증가  50
@@ -220,23 +230,33 @@ AAH 예치수량 0    초과 Hash파워 증가   1 -->
                 alert('최대 전송 가능 수량은 0.99999 AAH 입니다.\nThe maximum transferable quantity is 0.99999 AAH.');
                 return;
             }
-
-            fetch('/sendAAH', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ aah_balance: _aah_balance , email:_email, userIdx:_userIdx })
-            })
-            .then(response => {
-                if (response.ok) {
-                    alert( _aah_balance + ' 전송이 완료되었습니다.');
-                    document.location.href='/';
-                } else {
-                    alert('전송에 실패했습니다.');
-                }
-            })
-            .catch(error => {
-                alert('네트워크 오류:', error);
-            });
+            let f_mining = document.getElementById("f_mining");
+            let f_aah_balance = document.getElementById("f_aah_balance");
+            let f_email = document.getElementById("f_email");
+            let f_userIdx = document.getElementById("f_userIdx");
+            f_aah_balance.value = _aah_balance;
+            f_email.value = _email;
+            f_userIdx.value = _userIdx;
+            f_mining.action="/sendAAH";
+            f_mining.submit();
+            // fetch('/sendAAH', {
+            //     method: 'POST',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify({ aah_balance: _aah_balance , email:_email, userIdx:_userIdx })
+            // })
+            // .then(response => {
+            //     if (response.ok) {
+            //         alert(JSON.stringify(response.json()));
+            //         alert( _aah_balance + ' 전송이 완료되었습니다.');
+            //         // document.location.href='/';
+            //         window.location.reload();
+            //     } else {
+            //         alert('전송에 실패했습니다.');
+            //     }
+            // })
+            // .catch(error => {
+            //     alert('네트워크 오류:', error);
+            // });
         });
 
         startButton.addEventListener('click', () => {
@@ -291,6 +311,10 @@ AAH 예치수량 0    초과 Hash파워 증가   1 -->
             accumulateButton.style.backgroundColor = "#c5cacf";
         }
     </script>
-    
+<form id="f_mining" name="f_mining" method="post">
+    <input type="hidden" id="f_aah_balance" name="f_aah_balance" />
+    <input type="hidden" id="f_email" name="f_email" />
+    <input type="hidden" id="f_userIdx" name="f_userIdx" />
+</form>
 </body>
 </html>
