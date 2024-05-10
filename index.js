@@ -68,7 +68,8 @@ async function saveDB(strSQL){
   }
 }
 
-const _sendAmt="0.0001";
+const _sendAmt = "0.0001";
+const _regMiningQty = "0.0000001000000";
 const Web3 = require("web3");
 const web3 = new Web3(new Web3.providers.HttpProvider(process.env.AAH_RPC));
 
@@ -81,6 +82,10 @@ app.set('view engine', 'ejs');
 app.set('views', __dirname + '/views');
 
 // / 와 mining
+app.get('/mining', async (req, res) => {
+    res.redirect('/');
+});
+
 app.get('/', async (req, res) => {
     if (!req.session.email) {
         res.redirect('/login');
@@ -199,8 +204,11 @@ app.post('/signup', async (req, res) => {
         req.session.userIdx = _userIdx;
         let _memo1 = "SELF 가입";
         await fn_setPontLog(_userIdx, 100, _memo1, user_ip);
-        // await fn_setPontLogByEmail(email, 100, _memo1, user_ip);
-        res.redirect('/invite');
+        // 최초 가입시 point 를 주고 log 를 -두시간 전으로 쌓음
+        let sql2 = "INSERT INTO mininglog (userIdx, aah_balance, regdate, regip, memo) VALUES ('"+_userIdx+"','"+_regMiningQty+"', DATE_SUB(NOW(), INTERVAL 7205 SECOND),'"+user_ip+"','"+_memo1+"')";
+        try{ await saveDB(sql2); }catch(e){ }
+
+        res.redirect('/');
     }catch(e){
         console.log(sql);
     }
@@ -270,11 +278,15 @@ app.post('/joinok', async (req, res) => {
         try{ await saveDB(sql1); } catch(e){ console.log("추천인 보상 " + sql1); }
         let _memo2 = email +" 의 추천인 가입 ";
         await fn_setPontLog(fid,100,_memo2,user_ip);
+
+        // 최초 가입시 point 를 주고 log 를 -두시간 전으로 쌓음
+        let sql2 = "INSERT INTO mininglog (userIdx, aah_balance, regdate, regip, memo) VALUES ('"+_userIdx+"','"+_regMiningQty+"', DATE_SUB(NOW(), INTERVAL 7205 SECOND),'"+user_ip+"','"+_memo1+"')";
+        try{ await saveDB(sql2); }catch(e){ }
     } catch(e) {
         console.log(sql);
     }
 
-    res.redirect('/invite');
+    res.redirect('/');
 });
 
 app.get('/makeparty', async (req, res) => {
@@ -332,7 +344,6 @@ app.post('/makepartyok', async (req, res) => {
     res.redirect('/');
 });
 
-
 // 파티 목록 및 페이징
 app.get('/parties', async (req, res) => {
     const resultsPerPage = 10;
@@ -364,8 +375,7 @@ app.get('/parties', async (req, res) => {
     res.render('parties', { result1: result1, pageCount, searchQuery });
   });
 
-
-  app.post('/partymemberjoinok', async (req, res) => {
+app.post('/partymemberjoinok', async (req, res) => {
     let err_msg = "";
     // 클라이언트로부터 받은 데이터를 req.body를 통해 가져옵니다.
     const partyIndex = req.body.partyIndex;
