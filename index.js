@@ -195,6 +195,16 @@ app.post('/signup', async (req, res) => {
         res.render('error', { err_msg:err_msg});
         return;
     }
+
+    let sql0 = "SELECT count(userIdx) cnt FROM users WHERE email='"+email+"'" ;
+    let result0 = await loadDB(sql0);
+    let _cnt = result0[0].cnt;
+    if(_cnt>0){
+        let _errAlert = "<script>alert('이미 존재 하는 EMAIL 입니다.');document.location.href='/signup';</script>";
+        // console.log(_errAlert);
+        res.send(_errAlert);
+        return;
+    }
     // email = jsfnRepSQLinj(email);
     // password = jsfnRepSQLinj(password);
 
@@ -269,13 +279,23 @@ app.post('/joinok', async (req, res) => {
     // password = jsfnRepSQLinj(password);
     // fid = jsfnRepSQLinj(fid);
 
-    let reg_idx = await fn_getIdFromEmail(email);
-    if(reg_idx>0){
-        //이미 가입된 email 입니다.
-        let resend_link = `${process.env.FRONTEND_URL}/join?code=${code}&fid=${fid}&resend=Y`;
-        res.redirect(resend_link);
+    // let reg_idx = await fn_getIdFromEmail(email);
+    // if(reg_idx>0){
+    //     //이미 가입된 email 입니다.
+    //     let resend_link = `${process.env.FRONTEND_URL}/join?code=${code}&fid=${fid}&resend=Y`;
+    //     res.redirect(resend_link);
+    //     return;
+    // }
+    let resend_link = `/join?code=${code}&fid=${fid}`;
+    let sql0 = "SELECT count(userIdx) cnt FROM users WHERE email='"+email+"'" ;
+    let result0 = await loadDB(sql0);
+    let _cnt = result0[0].cnt;
+    if(_cnt>0){
+        let _errAlert = "<script>alert('이미 존재 하는 EMAIL 입니다.');document.location.href='"+resend_link+"';</script>";
+        res.send(_errAlert);
         return;
     }
+
     const hashedPassword = await bcrypt.hash(password, 10);
     var user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
     let sql = "INSERT INTO users (email, password, aah_balance, point, regip, reffer_id) values ('"+email+"','"+hashedPassword+"','"+_regMiningQty+"','200','"+user_ip+"','"+fid+"') ";
