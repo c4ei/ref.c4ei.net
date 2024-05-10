@@ -62,9 +62,9 @@ button:hover {
 </head>
 <body>
     <div class="container">
-        <a href="/">HOME</a> <br>
+        <a href="/">HOME</a> /  <a href="/parties">PARTY 가입</a><br>
 
-        <h1>PARTY 가입 / 생성 페이지</h1>
+        <h1>PARTY 생성 페이지</h1>
         <div class="invite-link">
             <!-- <p>초대 코드:</p> -->
             <form name="form_party" id="form_party" method="POST">
@@ -73,7 +73,11 @@ button:hover {
                     <input type="text" class="form-control" id="partyName" name="partyName" value="<%=partyName%>" required maxlength="30">
                 </div>
                 <br/>
-                <font color="red">※파티생성시 기존 파티에선 자동 탈퇴 됩니다.</font>
+                <font color="red">
+                    ※파티 생성시 기존 파티에선 자동 탈퇴 됩니다.<br/>
+                    ※When you create a party, you will automatically<br/>
+                     be withdrawn from the existing party.
+                </font>
                 <br/><br/>
                 <button type="button" onclick="jsfn_submit();" class="btn btn-primary btn-block">파티생성하기</button>
             </form>

@@ -139,9 +139,13 @@ app.get('/login', (req, res) => {
 });
 
 app.post('/login', async (req, res) => {
+    let err_msg= "";
     const { email, password } = req.body;
     if (!email || !password) {
-        return res.status(400).send('EMAIL과 비밀번호를 모두 입력해주세요.');
+        // return res.status(400).send('EMAIL과 비밀번호를 모두 입력해주세요.');
+        err_msg= err_msg +"EMAIL과 비밀번호를 모두 입력해주세요.";
+        res.render('error', { err_msg:err_msg});
+        return;
     }
     // email = jsfnRepSQLinj(email);
     // password = jsfnRepSQLinj(password);
@@ -150,11 +154,17 @@ app.post('/login', async (req, res) => {
     // console.log(result[0].length +" : result[0].length");
     if(result.length>0){
         if(!(await bcrypt.compare(password, result[0].password))){
-            return res.status(401).send('EMAIL 또는 비밀번호가 올바르지 않습니다.');
+            // return res.status(401).send('EMAIL 또는 비밀번호가 올바르지 않습니다.');
+            err_msg= err_msg +" EMAIL 또는 비밀번호가 올바르지 않습니다.";
+            res.render('error', { err_msg:err_msg});
+            return;
         }
     }else{
         // console.log(result.length +" : result.length");
-        return res.status(401).send('회원가입을 먼저 하세요.');
+        // return res.status(401).send('회원가입을 먼저 하세요.');
+        err_msg= err_msg +"회원가입을 먼저 하세요.";
+        res.render('error', { err_msg:err_msg});
+        return;
     }
     let _aah_real_balance = await getBalanceAah(result[0].pub_key);
     req.session.email = email;
@@ -169,7 +179,7 @@ app.post('/login', async (req, res) => {
         sql2 = sql2 + " update users set aah_real_balance='"+_aah_real_balance+"', loginCnt=loginCnt+1 , loginDailyCnt=loginDailyCnt+1 , logindate=now(), loginDailydate=now() where userIdx='"+result[0].userIdx+"'";
     }
     try{ await saveDB(sql2); }catch(e){ }
-    console.log(sql2);
+    // console.log(sql2);
     res.redirect('/');
 });
 
@@ -180,7 +190,10 @@ app.get('/signup', (req, res) => {
 app.post('/signup', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
-        return res.status(400).send('EMAIL과 비밀번호를 모두 입력해주세요.');
+        // return res.status(400).send('EMAIL과 비밀번호를 모두 입력해주세요.');
+        err_msg= err_msg +"EMAIL과 비밀번호를 모두 입력해주세요.";
+        res.render('error', { err_msg:err_msg});
+        return;
     }
     // email = jsfnRepSQLinj(email);
     // password = jsfnRepSQLinj(password);
@@ -228,8 +241,12 @@ app.get('/invite', async (req, res) => {
 // https://tel3.c4ei.net/join?code=5FiuDQx5b&fid=1
 app.get('/join', (req, res) => {
     const { code, fid, resend } = req.query;
+    let err_msg="";
     if (!code) {
-        return res.status(400).send('초대 코드가 필요합니다.');
+        // return res.status(400).send('초대 코드가 필요합니다.');
+        err_msg= err_msg +"초대 코드가 필요합니다.";
+        res.render('error', { err_msg:err_msg});
+        return;
     }
     let _resend = resend;
     if(_resend==undefined){
@@ -240,8 +257,12 @@ app.get('/join', (req, res) => {
 
 app.post('/joinok', async (req, res) => {
     const { code, email, password, fid } = req.body;
+    let err_msg="";
     if (!code || !email || !password || !fid) {
-        return res.status(400).send('코드, EMAIL, 비밀번호가 필요합니다.');
+        // return res.status(400).send('코드, EMAIL, 비밀번호가 필요합니다.');
+        err_msg= err_msg +"코드, EMAIL, 비밀번호가 필요합니다.";
+        res.render('error', { err_msg:err_msg});
+        return;
     }
     // code = jsfnRepSQLinj(code);
     // email = jsfnRepSQLinj(email);
@@ -359,6 +380,12 @@ app.post('/makepartyok', async (req, res) => {
 
 // 파티 목록 및 페이징
 app.get('/parties', async (req, res) => {
+    if (!req.session.email) {
+        res.redirect('/login');
+        return;
+    }
+    let userIdx = req.session.userIdx;
+
     const resultsPerPage = 10;
     const page = req.query.page || 1;
     const offset = (page - 1) * resultsPerPage;
@@ -385,7 +412,10 @@ app.get('/parties', async (req, res) => {
     const totalCount = result2[0].count;
     const pageCount = Math.ceil(totalCount / resultsPerPage);
 
-    res.render('parties', { result1: result1, pageCount, searchQuery });
+    let myP_idx = await jsfn_getMyParty_idx(userIdx);
+    let myP_name = await jsfn_getPartyName(myP_idx);
+
+    res.render('parties', { result1: result1, pageCount, searchQuery , myP_idx:myP_idx, myP_name:myP_name});
   });
 
 app.post('/partymemberjoinok', async (req, res) => {
@@ -537,6 +567,26 @@ app.listen(process.env.PORT, () => {
     console.log(`서버가 http://localhost:${process.env.PORT} 포트에서 실행 중입니다.`);
 });
 // #########################################  
+
+async function jsfn_getMyParty_idx(userIdx){
+    let sql0 = "select party_idx from party_member userIdx where user_idx = '"+userIdx+"'";
+    let result0 = await loadDB(sql0);
+    let party_idx = 0;
+    if(result0.length>0){
+        party_idx= result0[0].party_idx;
+    }
+    return party_idx;
+}
+
+async function jsfn_getPartyName(Pid){
+    let sql0 = "SELECT idx, partyName FROM parties where idx = '"+Pid+"'";
+    let result0 = await loadDB(sql0);
+    let _partyName = "없음";
+    if(result0.length>0){
+        _partyName= result0[0].partyName;
+    }
+    return _partyName;
+}
 
 async function fn_setMiningLog(userIdx, aah_balance, memo, user_ip){
     let sql = "INSERT INTO mininglog (userIdx, aah_balance, regip, memo) VALUES ('"+userIdx+"','"+aah_balance+"','"+user_ip+"','"+memo+"')";

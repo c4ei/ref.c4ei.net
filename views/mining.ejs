@@ -80,24 +80,30 @@
         <div class="user-info">
             <p>전송가능 AAH 수량 : <span id="accumulatedCount"><%=aah_balance%></span> &nbsp;
                 <button id="sendAAHButton" style="width: 50px;height: 30px;padding: 2px 2px 2px 2px;background-color: chartreuse;color: #ff0000;">전송</button></p>
-            <p>내 추천인 수 : <%=reffer_cnt%> <font color="red">Hash+</font></p>
-            <p>내 파티원 수 : <%=party_mem_cnt%> <font color="red">Hash+</font></p>
+            <p>내 추천인 수 : <%=reffer_cnt%> <% if (reffer_cnt>0){ %><font color="red">Hash+</font><% } %> </p>
+            <p>내 파티원 수 : <%=party_mem_cnt%> <% if (party_mem_cnt>0){ %> <font color="red">Hash+</font> <% } %> </p>
         </div>
         <button id="showMoreButton" onclick="jsfn_lyShow()">추가정보</button>
         <div id="lyNoShow" style="display: none;">
             <p>내 Email 주소 : <%=email%></p>
             <p>내 AAH 주소 : <br /> <span id="aah_address">
                 <a href ="https://exp.c4ex.net/address/<%=aah_address%>" target="_blank"><%=aah_address%></a></span></p>
-            <p>내 지갑 AAH 예치수량 : <span id="aah_real_balance"><%=aah_real_balance%></span> <font color="red">Hash+</font></p>
-<pre>
-AAH 예치수량 1000 초과 Hash파워 증가 250
+            <p>내 지갑 AAH 예치수량 : <span id="aah_real_balance"><%=aah_real_balance%></span> 
+                <%      if (aah_real_balance>1000){ %> <font color="red">Hash+ 250</font> <% } 
+                 else if (aah_real_balance>500) { %> <font color="red">Hash+ 150</font> <% }
+                 else if (aah_real_balance>200) { %> <font color="red">Hash+ 50</font> <% } 
+                 else if (aah_real_balance>100) { %> <font color="red">Hash+ 20</font> <% } 
+                 else if (aah_real_balance>50)  { %> <font color="red">Hash+ 5</font> <% } 
+                 else if (aah_real_balance>10)  { %> <font color="red">Hash+ 2</font> <% } 
+                 else if (aah_real_balance>0)   { %> <font color="red">Hash+ 1</font> <% } %>
+            </p>
+<!-- AAH 예치수량 1000 초과 Hash파워 증가 250
 AAH 예치수량 500  초과 Hash파워 증가 150
 AAH 예치수량 200  초과 Hash파워 증가  50
 AAH 예치수량 100  초과 Hash파워 증가  20
 AAH 예치수량 50   초과 Hash파워 증가   5
 AAH 예치수량 10   초과 Hash파워 증가   2
-AAH 예치수량 0    초과 Hash파워 증가   1
-</pre>
+AAH 예치수량 0    초과 Hash파워 증가   1 -->
         </div>
         
         <h1 id="MiningQty">0.0000000000001</h1> 
@@ -207,11 +213,11 @@ AAH 예치수량 0    초과 Hash파워 증가   1
             let _email = document.getElementById("email").value;
             let _userIdx = document.getElementById("userIdx").value;
             if(_aah_balance<0.00001){
-                alert('최소 전송 가능 수량은 0.00001 AAH 입니다.');
+                alert('최소 전송 가능 수량은 0.00001 AAH 입니다.\nThe minimum transferable quantity is 0.00001 AAH.');
                 return;
             }
             if(_aah_balance>0.99999){
-                alert('최대 전송 가능 수량은 0.99999 AAH 입니다.');
+                alert('최대 전송 가능 수량은 0.99999 AAH 입니다.\nThe maximum transferable quantity is 0.99999 AAH.');
                 return;
             }
 

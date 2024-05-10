@@ -52,7 +52,7 @@
 
 <body>
     <a href="/">HOME</a> / <a href="/makeparty">파티만들기</a> <br>
-    <h1>Party List</h1>
+    <h1>Party List - 내 파티 : <%=myP_name%></h1>
     <!-- 검색 폼 -->
     <form action="/parties" method="GET">
         <input type="text" name="search" placeholder="Search...">
@@ -102,5 +102,7 @@
     <form method="POST" id="joinPartyForm">
         <input type="hidden" id="partyIndex" name="partyIndex" />
     </form>
+    <input type="hidden" id="myP_idx" name="myP_idx" value="<%=myP_idx%>" />
+    <input type="hidden" id="myP_name" name="myP_name" value="<%=myP_name%>" />
 </body>
 </html>
