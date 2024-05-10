@@ -168,13 +168,8 @@ app.post('/login', async (req, res) => {
     }else{
         sql2 = sql2 + " update users set aah_real_balance='"+_aah_real_balance+"', loginCnt=loginCnt+1 , loginDailyCnt=loginDailyCnt+1 , logindate=now(), loginDailydate=now() where userIdx='"+result[0].userIdx+"'";
     }
-    
-    try{
-        await saveDB(sql2);
-    }catch(e){
-        console.log(sql2);
-    }
-
+    try{ await saveDB(sql2); }catch(e){ }
+    console.log(sql2);
     res.redirect('/');
 });
 
@@ -216,7 +211,8 @@ app.post('/signup', async (req, res) => {
 
 app.get('/invite', async (req, res) => {
     if (!req.session.email) {
-        return res.status(401).send('로그인이 필요합니다.');
+        res.redirect('/login');
+        return;// res.status(401).send('로그인이 필요합니다.');
     }
 
     const _email = req.session.email;
@@ -291,7 +287,9 @@ app.post('/joinok', async (req, res) => {
 
 app.get('/makeparty', async (req, res) => {
     if (!req.session.email) {
-        return res.status(401).send('로그인이 필요합니다.');
+        res.redirect('/login');
+        return;
+        //return res.status(401).send('로그인이 필요합니다.');
     }
 
     const _email = req.session.email;
@@ -316,14 +314,29 @@ app.get('/makeparty', async (req, res) => {
 });
 
 app.post('/makepartyok', async (req, res) => {
+    let err_msg="";
     const { partyName } = req.body;
     if (!req.session.email || !partyName) {
-        return res.status(400).send('파티 이름과 로그인이 필요합니다.');
+        res.redirect('/login');
+        return;
+        // return res.status(400).send('파티 이름과 로그인이 필요합니다.');
     }
     let _partyName = jsfnRepSQLinj(partyName);
     // const email = req.session.email;
     let userIdx = req.session.userIdx;
     var user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
+
+    let sql1 = "select count(*) cnt from parties where userIdx = '"+userIdx+"'";
+    let result1 = await loadDB(sql1);
+    let _cnt = result1[0].cnt;
+    if(_cnt>0){
+        err_msg= err_msg +" 이미 생성한 파티가 있어 더이상 생성 불가능 합니다.";
+        res.render('error', { err_msg:err_msg});
+        return;
+    }else{
+        let sql1_1 = "delete from party_member where user_idx='"+userIdx+"'";
+        await saveDB(sql1_1);
+    }
 
     let sql2 = "insert into parties (partyName, userIdx, regip) values ('"+_partyName+"','"+userIdx+"','"+user_ip+"')";
     await saveDB(sql2);
@@ -420,6 +433,14 @@ app.post('/accumulate', async (req, res) => {
     // MiningQty = jsfnRepSQLinj(MiningQty);
     // userIdx = jsfnRepSQLinj(userIdx);
     // email = jsfnRepSQLinj(email);
+    let err_msg="";
+    let chk_email = req.session.email;
+    let chk_userIdx = req.session.userIdx;
+    if(userIdx!=chk_userIdx || email!=chk_email){
+        err_msg= err_msg +" 세션에 문제가있습니다. 다시 로그인 해 주세요.";
+        res.render('error', { err_msg:err_msg});
+        return;
+    }
     var user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
     let _err = ""
     let sql1 = "SELECT COUNT(midx) cnt FROM mininglog WHERE useridx = '"+userIdx+"'" ;
@@ -446,6 +467,49 @@ app.post('/accumulate', async (req, res) => {
     }else{
         _err = _err + email +" : 2 hours not passed";
     }
+
+    res.sendStatus(200);
+});
+
+app.post('/sendAAH', async (req, res) => {
+    const { aah_balance , userIdx , email } = req.body;
+    // MiningQty = jsfnRepSQLinj(MiningQty);
+    // userIdx = jsfnRepSQLinj(userIdx);
+    // email = jsfnRepSQLinj(email);
+    let err_msg="";
+    let chk_email = req.session.email;
+    let chk_userIdx = req.session.userIdx;
+    if(userIdx!=chk_userIdx || email!=chk_email){
+        err_msg= err_msg +" 세션에 문제가있습니다. 다시 로그인 해 주세요.";
+        res.render('error', { err_msg:err_msg});
+        return;
+    }
+    var user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
+    let sql = "SELECT userIdx, pub_key, aah_balance, aah_real_balance, reqAAH_ingYN FROM users WHERE userIdx='"+chk_userIdx+"'";
+    let result = await loadDB(sql);
+    // console.log(result.length +" : result.length" + JSON.stringify(result[0]) );
+    let _aah_balance = aah_balance; // from DB value
+    let _reqAAH_ingYN = "N";
+    if(result.length>0){
+        _aah_balance = result[0].aah_balance;
+        _pub_key     = result[0].pub_key;
+        _reqAAH_ingYN = result[0].reqAAH_ingYN;
+    }
+
+    let sql0 = "SELECT count(userIdx) AS cnt FROM sendlog WHERE userIdx ='"+chk_userIdx+"' and memo='AAH_MINING' and regdate > DATE_ADD(now(), INTERVAL -7 HOUR)";
+    let result0 = loadDB(sql0);
+    let mining_Cnt = 0;
+    if(result0.length>0){ mining_Cnt = result0[0].cnt; }
+    if(mining_Cnt==0){
+        if (_reqAAH_ingYN=='N'){
+            err_msg = err_msg + fn_sendMining(process.env.AAH_BANK_ADDRESS, _pub_key, _aah_balance, chk_userIdx, user_ip);
+        }else{
+            err_msg = err_msg + "이미 처리중입니다. (It is already being processed.)";
+            res.render('error', { err_msg:err_msg});
+            return;
+        }
+    }
+    console.log(err_msg);
 
     res.sendStatus(200);
 });
@@ -530,89 +594,19 @@ async function fn_setPontLogByEmail(email, point, memo, user_ip){
 
 /////////////////// air drop //////////////////////
 
-async function fn_getmyaddr(myid){
-    let sql = "SELECT user_id, address, user_name FROM users WHERE user_id ='"+myid+"'";
-    let result = sync_connection.query(sql);
-    if(result.length>0){
-        let address = result[0].address;
-        return address;
-    }else{
-        return "no address";
-    }
-}
-
-async function fn_myaddress(myid, myname){
-    let sql0 = "SELECT count(user_id) as Cnt FROM users WHERE user_id ='"+myid+"'";
-    let result0 = sync_connection.query(sql0);
-    let _Cnt = result0[0].Cnt;
-    if(_Cnt > 0)
-    {
-        let sql = "SELECT user_id, address, user_name FROM users WHERE user_id ='"+myid+"'";
-        // console.log(sql);
-        let result = sync_connection.query(sql);
-            // console.log(result.length +":result.length");
-        let user_id = result[0].user_id;
-        let address = result[0].address;
-        let user_name = result[0].user_name;
-        return address;
-    } else {
-        let sql1 = "SELECT idx,address FROM address WHERE useYN ='Y' AND mappingYN='N' ORDER BY idx LIMIT 1";
-        let result1 = sync_connection.query(sql1);
-        if(result1.length>0){
-            let addr_idx = result1[0].idx;
-            let addr_address = result1[0].address;
-            try{
-                let sql2 = "insert into users (user_id, address, user_name)";
-                sql2 = sql2 + " values ('"+myid+"', '"+addr_address+"', '"+myname+"')";
-                let result2 = sync_connection.query(sql2);
-                try{
-                    setImportAah(addr_address);
-                }catch(e){
-                    console.log("307 : setImportAah : "+e);
-                }
-            }catch(e){
-                console.log(sql2);
-            }
-            // try{
-            //     let sql3 = "update address set user_id='"+myid+"',mappingYN='Y',last_reg=now() where idx='"+addr_idx+"'";
-            //     let result3 = sync_connection.query(sql3);
-            // }catch(e){
-            //     console.log(sql3);
-            // }
-            return addr_address;
-        } else {
-            // event end 2000 member end
-            return "end event";
-        }
-    }
-}
-
-async function setImportAah(aah_addr){
-    let sql1 = "SELECT privateKey FROM address WHERE address='"+aah_addr+"'"; // idx,address,privateKey
-    let result = sync_connection.query(sql1);
-    let privateKey = result[0].privateKey;
-    try {
-        if(privateKey!=''){
-            await web3.personal.importRawKey(privateKey , process.env.AAH_ADDR_PWD, function(error, result) {
-                return result;
-            });
-        }
-    } catch(e){
-        console.log(e);
-    }
-}
-
 async function getBalanceAah(aah_addr){
-    var wallet_balance = await web3.eth.getBalance(aah_addr, function(error, result) {
-        wallet_balance = web3.utils.fromWei(result, "ether");
+    var wallet_balance = await web3.eth.getBalance(aah_addr, async function(error, result) {
         // console.log(wallet_balance+":wallet_balance - getBalanceAah");
     });
-    return wallet_balance;
+    wallet_balance = await web3.utils.fromWei(await wallet_balance, "ether");
+    // console.log(await wallet_balance + " : wallet_balance - 602 ");
+    return await wallet_balance;
 }
 
-async function fn_sendMining(ctx, send_addr, rcv_addr, rcv_amt, chatId, fromId){
-    let sqls1 = "update users set reqAAH_ingYN='Y' WHERE user_Id ='"+fromId+"'";
-    let result1 = sync_connection.query(sqls1);
+async function fn_sendMining(send_addr, rcv_addr, rcv_amt, fromId, user_ip){
+    let tr_msg = "";
+    let sqls1 = "update users set reqAAH_ingYN='Y' WHERE userIdx ='"+fromId+"'";
+    saveDB(sqls1);
 
     if (await fn_unlockAccount(send_addr))
     {
@@ -626,73 +620,41 @@ async function fn_sendMining(ctx, send_addr, rcv_addr, rcv_amt, chatId, fromId){
             }).
             once('sent', function(payload){ console.log(getCurTimestamp()+' ###  mining sent ###'+fromId+' / '+rcv_addr+' / '+rcv_amt); })
             .then(function(receipt){
-                fn_send_tx_log(fromId, send_addr, rcv_addr, rcv_amt, receipt.blockNumber, receipt.contractAddress, receipt.blockHash, receipt.transactionHash,"AAH_MINING");
+                fn_send_tx_log(fromId, send_addr, rcv_addr, rcv_amt, receipt.blockNumber, receipt.contractAddress, receipt.blockHash, receipt.transactionHash,"AAH_MINING",user_ip);
                 web3.eth.getBalance(rcv_addr, function(error, result) {
                     let wallet_balance = web3.utils.fromWei(result, "ether") +" AAH";
                     // i18n.__('mining_lang_send_mining_ok_aah') // "#### AAH_MINING 발송 ####\n"+ rcv_addr +" 로\n"+rcv_amt+" AAH가 발송되었습니다.\n내 잔고 : "+ wallet_balance+"\ntransactionHash : "+receipt.transactionHash
                     let _hash = receipt.transactionHash;
-                    fn_sendMessage(ctx, chatId, i18n.__('mining_lang_send_mining_ok_aah',{rcv_addr ,rcv_amt ,wallet_balance ,_hash ,_hash }) , 'html');
-                    let sqls2 = "update users set reqAAH_ingYN='N' WHERE user_Id ='"+fromId+"'";
-                    let result2 = sync_connection.query(sqls2);
+                    tr_msg = tr_msg + rcv_addr +" : rcv_addr / " + rcv_amt +" : rcv_amt / "+ wallet_balance +" : wallet_balance / "+ _hash +" : _hash";
+                    // fn_sendMessage(ctx, chatId, i18n.__('mining_lang_send_mining_ok_aah',{rcv_addr ,rcv_amt ,wallet_balance ,_hash ,_hash }) , 'html');
+                    let sqls2 = "update users set reqAAH_ingYN='N', aah_balance='0', last_reg=now() WHERE userIdx ='"+fromId+"'";
+                    saveDB(sqls2);
                 });
             });
         }catch(e){
             // i18n.__('mining_lang_send_mining_failure_aah') //#### AAH_MINING 발송 ####\n채굴중 문제가 발생 하였습니다.
-            fn_sendMessage(ctx, chatId, i18n.__('mining_lang_send_mining_failure_aah'));
+            console.log(ctx, chatId, i18n.__('mining_lang_send_mining_failure_aah'));
+            tr_msg = tr_msg + "" + i18n.__('mining_lang_send_mining_failure_aah');
         }
     }
-}
-
-async function fn_sendTr(ctx, send_addr, rcv_addr, rcv_amt, chatId, fromId){
-    if (await fn_unlockAccount(send_addr))
-    {
-        web3.eth.sendTransaction({
-            from: send_addr,
-            to: rcv_addr,
-            value: web3.utils.toWei(rcv_amt,'ether'),
-            gas: 300000
-        }).
-        once('sent', function(payload){ console.log(getCurTimestamp()+' ###   user sent ###'); })
-        .then(function(receipt){
-            fn_send_tx_log(fromId, send_addr, rcv_addr, rcv_amt, receipt.blockNumber, receipt.contractAddress, receipt.blockHash, receipt.transactionHash,"AAH");
-            web3.eth.getBalance(send_addr, function(error, result) {
-                let wallet_balance = web3.utils.fromWei(result, "ether") +" AAH";
-                let _hash = receipt.transactionHash;
-                fn_sendMessage(ctx, chatId, i18n.__('mining_lang_send_user_ok_aah',{rcv_addr ,rcv_amt ,wallet_balance ,_hash ,_hash }) , 'html');
-            });
-        });
-    }
+    return tr_msg;
 }
 
 async function fn_unlockAccount(addr){
     let rtn_result = false;
-    // console.log(addr +" / 402 : "+process.env.AAH_ADDR_PWD);
+    // console.log(addr +" / 671 : "+process.env.AAH_ADDR_PWD);
     await web3.eth.personal.unlockAccount(addr, process.env.AAH_ADDR_PWD, 500).then(function (result) {
-      rtn_result = result;
-    //   console.log('#### 407 #### fn_unlockAccount result :' + result);
+        rtn_result = result;
+        //   console.log('#### 674 #### fn_unlockAccount result :' + result);
     });
-    return await rtn_result;
+    return rtn_result;
 }
 
-async function fn_send_tx_log(fromId, send_addr, rcv_addr, rcv_amt, blockNumber,contractAddress,blockHash,transactionHash, memo ){
-    let strsql ="insert into sendlog (`emailx`,`fromAddr`,`toAddr`,`toAmt`,`blockNumber`, `contractAddress` ,`blockHash`,`transactionHash`,`memo`)";
-    strsql =strsql + " values ('"+fromId+"','"+send_addr+"','"+rcv_addr+"', '"+rcv_amt+"','"+blockNumber+"','"+contractAddress+"','"+blockHash+"','"+transactionHash+"','"+memo+"')";
+async function fn_send_tx_log(fromId, send_addr, rcv_addr, rcv_amt, blockNumber,contractAddress,blockHash,transactionHash, memo, user_ip ){
+    let strsql ="insert into sendlog (userIdx,`fromAddr`,`fromAmt`,`toAddr`,`toAmt`,`blockNumber`, `contractAddress` ,`blockHash`,`transactionHash`,`memo`,`regip`)";
+    strsql =strsql + " values ('"+fromId+"','"+send_addr+"','"+rcv_amt+"','"+rcv_addr+"','"+rcv_amt+"','"+blockNumber+"','"+contractAddress+"','"+blockHash+"','"+transactionHash+"','"+memo+"','"+user_ip+"')";
     // console.log(strsql);
-    let result = sync_connection.query(strsql);
-}
-
-function getAddressCheck(user_address){
-    //########## address check start ##########
-    let addr_result     = Web3.utils.isAddress(user_address);
-    // if(!addr_result){}
-    return addr_result;
-}
-  
-function get_users_cnt(){
-    let sql = "SELECT count(user_id) as cnt FROM users "
-    let result = sync_connection.query(sql);
-    let cnt = result[0].cnt;
-    return cnt;
+    saveDB(strsql);
 }
 
 const crypto = require("crypto");
