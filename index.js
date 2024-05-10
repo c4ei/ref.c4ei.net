@@ -278,7 +278,7 @@ app.post('/joinok', async (req, res) => {
     }
     const hashedPassword = await bcrypt.hash(password, 10);
     var user_ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress;
-    let sql = "INSERT INTO users (email , password , point ,regip, reffer_id) values ('"+email+"','"+hashedPassword+"' , '200','"+user_ip+"', '"+fid+"') ";
+    let sql = "INSERT INTO users (email, password, aah_balance, point, regip, reffer_id) values ('"+email+"','"+hashedPassword+"','"+_regMiningQty+"','200','"+user_ip+"','"+fid+"') ";
     try{
         await saveDB(sql);
 
@@ -291,7 +291,7 @@ app.post('/joinok', async (req, res) => {
         let _memo1 = "추천인 존재로 가입";
         await fn_setPontLog(_userIdx, 200, _memo1, user_ip);
         //추천인 보상
-        let sql1 = "update users set last_reg=now(), point=point+100, reffer_cnt=reffer_cnt+1 where userIdx = '"+fid+"' ";
+        let sql1 = "update users set last_reg=now(), point=point+100, reffer_cnt=reffer_cnt+1 , aah_balance = CAST(aah_balance AS DECIMAL(35,13)) + CAST('"+_regMiningQty+"' AS DECIMAL(35,13)) where userIdx = '"+fid+"' ";
         try{ await saveDB(sql1); } catch(e){ console.log("추천인 보상 " + sql1); }
         let _memo2 = email +" 의 추천인 가입 ";
         await fn_setPontLog(fid,100,_memo2,user_ip);
@@ -299,6 +299,10 @@ app.post('/joinok', async (req, res) => {
         // 최초 가입시 point 를 주고 log 를 -두시간 전으로 쌓음
         let sql2 = "INSERT INTO mininglog (userIdx, aah_balance, regdate, regip, memo) VALUES ('"+_userIdx+"','"+_regMiningQty+"', DATE_SUB(NOW(), INTERVAL 7205 SECOND),'"+user_ip+"','"+_memo1+"')";
         try{ await saveDB(sql2); }catch(e){ }
+        
+        
+        // let sql4 = "INSERT INTO mininglog (userIdx, aah_balance, regdate, regip, memo) VALUES ('"+fid+"','"+_regMiningQty+"', DATE_SUB(NOW(), INTERVAL 7205 SECOND),'"+user_ip+"','"+_memo1+"')";
+        // try{ await saveDB(sql4); }catch(e){ }
     } catch(e) {
         console.log(sql);
     }

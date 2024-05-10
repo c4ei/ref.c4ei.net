@@ -14,3 +14,4 @@ yarn start
 
 yarn add express mysql2 bcrypt  express-session shortid
 
+cd /home/dev/www/ref/ref.c4ei.net
